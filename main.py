@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from io import BytesIO
 import pdfplumber
+import csv
 
 # PDF 다운로드 링크가 포함된 HTML 페이지 요청
 url = "https://dart.fss.or.kr/pdf/download/main.do?rcp_no=20240516001421&dcm_no=9949777"
@@ -31,7 +32,7 @@ if download_tag:
 
     print("PDF 파일이 로컬에 저장되었습니다: 'downloaded_file.pdf'")
 
-    # PDF 파일을 처리하여 "연결 재무 정보" 추출
+    # PDF 파일을 처리하여 "연결 재무 정보" 추출 및 CSV 파일로 저장
     try:
         with pdfplumber.open(pdf_file) as pdf:
             for page in pdf.pages:
@@ -39,9 +40,12 @@ if download_tag:
                 if "연결재무정보" in text:
                     print("연결 재무 정보가 포함된 페이지를 찾았습니다.")
                     tables = page.extract_tables()
-                    for table in tables:
-                        for row in table:
-                            print(row)
+                    with open("financial_data.csv", mode='w', newline='', encoding='utf-8') as csv_file:
+                        csv_writer = csv.writer(csv_file)
+                        for table in tables:
+                            for row in table:
+                                csv_writer.writerow(row)
+                    print("연결 재무 정보가 'financial_data.csv' 파일로 저장되었습니다.")
                     break
     except Exception as e:
         print(f"PDF 파일을 처리하는 중 오류가 발생했습니다: {e}")
