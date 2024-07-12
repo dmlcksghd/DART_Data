@@ -38,22 +38,36 @@ if download_tag:
             sections = ["연결 재무상태표", "연결 손익계산서", "연결 포괄손익계산서", "연결 자본변동표", "연결 현금흐름표"]
             tables_combined = []
             extracting = False
+            current_section = None
+            page_tables = []  # 현재 페이지에서 추출한 테이블
 
-            for page in pdf.pages:
+            for i, page in enumerate(pdf.pages, start=1):
                 text = page.extract_text()
                 if text:
+                    # 페이지에서 섹션 키워드 확인
                     if any(section in text for section in sections):
                         extracting = True
+                        for section in sections:
+                            if section in text:
+                                current_section = section
+                                break
 
                     if extracting:
-                        print(f"테이블이 포함된 페이지 {page.page_number}를 처리 중입니다.")
+                        print(f"{current_section}가 포함된 페이지 {page.page_number}를 처리 중입니다.")
                         tables = page.extract_tables()
                         for table in tables:
                             if table:
-                                tables_combined.extend(table)
+                                if page_tables and table == page_tables[-1]:
+                                    page_tables[-1].extend(table)
+                                else:
+                                    page_tables.append(table)
+                        tables_combined.extend(page_tables)
+                        page_tables.clear()
 
-                    if "재무에 관한 사항" not in text and extracting:
-                        extracting = False
+                    if current_section and not any(section in text for section in sections):
+                        if "재무에 관한 사항" not in text:
+                            extracting = False
+                            current_section = None
 
             if tables_combined:
                 with open("financial_statements.csv", mode='w', newline='', encoding='utf-8') as csv_file:
