@@ -30,7 +30,7 @@ if download_tag:
     with open("downloaded_file.pdf", "wb") as file:
         file.write(pdf_resp.content)
 
-    print("PDF 파일이 로컬에 저장되었습니다: 'downloaded_file.pdf'")
+    # print("PDF 파일이 로컬에 저장되었습니다: 'downloaded_file.pdf'")
 
     # PDF 파일을 처리하여 특정 섹션의 표 추출 및 CSV 파일로 저장
     try:
@@ -53,7 +53,7 @@ if download_tag:
                                 break
 
                     if extracting:
-                        print(f"{current_section}가 포함된 페이지 {page.page_number}를 처리 중입니다.")
+                        # print(f"{current_section}가 포함된 페이지 {page.page_number}를 처리 중입니다.")
                         tables = page.extract_tables()
                         for table in tables:
                             if table:
