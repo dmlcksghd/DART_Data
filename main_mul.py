@@ -29,17 +29,11 @@ def get_report(corp_df, corp_name, bsns_year, num, fs_div):
     else:  # num == 1 or else
         reprt_code = '11013'
 
-    data = dart_fss.api.finance.fnltt_singl_acnt_all(corp_code, bsns_year, reprt_code, fs_div, api_key=None)['list']
+    data = dart_fss.api.finance.fnltt_singl_acnt_all(corp_code, bsns_year, reprt_code, fs_div, api_key=api_key)['list']
     df = pd.DataFrame(data)
     df.to_excel(f'{corp_name} {bsns_year}년 {num}분기 재무보고서.xlsx')
 
     return df
-
-# 삼성전자의 2022년 1분기 재무제표 가져오기
-bsns_year = '2022'
-num = '1'
-fs_div = 'CFS'
-df = get_report(df_listed, '삼성전자', bsns_year, num, fs_div)
 
 # pandas 출력 옵션 설정
 pd.set_option('display.max_columns', None)  # 모든 열 출력
@@ -75,5 +69,16 @@ def split_report(corp_name, bsns_year, num, df):
 
     return BS, IS, CF, CIS, SCE
 
-# 재무제표 데이터를 분할하여 저장 및 출력
-BS, IS, CF, CIS, SCE = split_report('삼성전자', bsns_year, num, df)
+# 모든 년도의 모든 분기 재무제표 가져오기
+years = ['2022', '2023', '2024']
+quarters = ['1', '2', '3', '4']
+fs_div = 'CFS'  # 연결재무제표
+
+for year in years:
+    for quarter in quarters:
+        try:
+            print(f'Fetching data for {year}년 {quarter}분기...')
+            df = get_report(df_listed, '삼성전자', year, quarter, fs_div)
+            BS, IS, CF, CIS, SCE = split_report('삼성전자', year, quarter, df)
+        except Exception as e:
+            print(f'Error fetching data for {year}년 {quarter}분기: {e}')
