@@ -11,9 +11,6 @@ all_corps = dart_fss.api.filings.get_corp_code()
 df = pd.DataFrame(all_corps)
 df_listed = df[df['stock_code'].notnull()].reset_index(drop=True)
 
-# 삼성전자 기업 코드 찾기
-samsung = corp_list.find_by_corp_name('삼성전자', exactly=True)[0]
-
 # 특정 재무제표 데이터 가져오기
 def get_report(corp_df, corp_name, bsns_year, num, fs_div):
     """기업명과 사업연도, 분기, 재무제표 구분을 입력받아 재무제표 데이터를 가져오는 함수"""
@@ -69,16 +66,17 @@ def split_report(corp_name, bsns_year, num, df):
 
     return BS, IS, CF, CIS, SCE
 
-# 모든 년도의 모든 분기 재무제표 가져오기
-years = ['2022', '2023', '2024']
-quarters = ['1', '2', '3', '4']
+# 사용자 입력 받기
+corp_name = input("종목명을 입력하세요: ")
+years = input("조회할 연도들을 입력하세요 (콤마로 구분, 예: 2022,2023,2024): ").split(',')
+quarters = input("조회할 분기들을 입력하세요 (콤마로 구분, 예: 1,2,3,4): ").split(',')
 fs_div = 'CFS'  # 연결재무제표
 
 for year in years:
     for quarter in quarters:
         try:
-            print(f'Fetching data for {year}년 {quarter}분기...')
-            df = get_report(df_listed, '삼성전자', year, quarter, fs_div)
-            BS, IS, CF, CIS, SCE = split_report('삼성전자', year, quarter, df)
+            print(f'{corp_name}의 {year}년 {quarter}분기 데이터를 가져오는 중...')
+            df = get_report(df_listed, corp_name, year.strip(), quarter.strip(), fs_div)
+            BS, IS, CF, CIS, SCE = split_report(corp_name, year.strip(), quarter.strip(), df)
         except Exception as e:
-            print(f'Error fetching data for {year}년 {quarter}분기: {e}')
+            print(f'{corp_name}의 {year}년 {quarter}분기 데이터 가져오기에 실패했습니다: {e}')
