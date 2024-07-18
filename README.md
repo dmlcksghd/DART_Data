@@ -6,8 +6,10 @@
 
 API 키 필요함(DART에서 API 키 받아야함)
 
-pip install requests beautifulsoup4 pdfplumber dart-fss pandas
+pip install fpdf matplotlib requests beautifulsoup4 pdfplumber dart-fss pandas
 
+pip install fpdf
+pip install matplotlib
 pip install requests
 pip install beautifulsoup4
 pip install pdfplumber
@@ -36,3 +38,6 @@ get_report 함수는 지정된 연도, 분기 및 재무제표 유형(CFS 또는
 
 데이터 분할 및 저장:
 split_report 함수는 가져온 재무제표 데이터를 별도의 카테고리(재무상태표, 손익계산서, 현금흐름표, 포괄손익계산서, 자본변동표)로 분할하고 각각의 Excel 파일로 저장합니다.
+
+예시 삼성전자 2024 1분기
+![img.png](img.png)
