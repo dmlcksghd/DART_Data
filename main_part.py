@@ -1,6 +1,5 @@
 import dart_fss
 import pandas as pd
-from fpdf import FPDF
 
 # DART API 키 설정
 api_key = ""
@@ -40,41 +39,36 @@ pd.set_option('display.max_rows', None)  # 모든 행 출력
 pd.set_option('display.max_colwidth', None)  # 모든 열 너비 출력
 
 
-# 영업이익과 총매출 데이터 추출
-def extract_key_metrics(IS):
-    # 데이터 확인을 위해 출력
-    print("손익계산서 데이터:")
-    print(IS)
+# 재무제표 데이터를 분할하여 저장 및 출력
+def split_report(corp_name, bsns_year, num, df):
+    """재무제표 데이터를 각각의 CSV 파일로 저장하고 출력하는 함수"""
+    # 필요한 항목만 추출
+    items_of_interest = {
+        '자산 총액': 'ifrs-full_Assets',
+        '부채 총액': 'ifrs-full_Liabilities',
+        '자본 총액': 'ifrs-full_Equity',
+        '매출액': 'ifrs-full_Revenue',
+        '영업이익': 'dart_OperatingIncomeLoss',
+        '순이익': 'ifrs-full_ProfitLoss',
+        '현금 흐름': 'ifrs-full_CashFlowsFromUsedInOperatingActivities'
+    }
 
-    # 영업이익과 총매출 데이터 추출
-    try:
-        sales = IS[IS['account_nm'].isin(['수익(매출액)', '매출액'])]['thstrm_amount'].values[0]
-    except IndexError:
-        sales = '데이터 없음'
+    report_data = {}
 
-    try:
-        operating_income = IS[IS['account_nm'] == '영업이익']['thstrm_amount'].values[0]
-    except IndexError:
-        operating_income = '데이터 없음'
+    for item_name, item_code in items_of_interest.items():
+        filtered_df = df[df['account_id'] == item_code]
+        if not filtered_df.empty:
+            report_data[item_name] = filtered_df.iloc[0]['thstrm_amount']
+        else:
+            report_data[item_name] = None
 
-    return sales, operating_income
+    report_df = pd.DataFrame([report_data])
 
+    file_name = f'{corp_name}_{bsns_year}_{num}Q_report.csv'
+    report_df.to_csv(file_name, index=False, encoding='utf-8-sig')
+    print(f'{file_name} 파일로 저장되었습니다.')
 
-# PDF 생성
-def create_pdf(corp_name, year, quarter, sales, operating_income):
-    pdf = FPDF()
-    pdf.add_page()
-    font_path = 'NanumGothic.ttf'  # NanumGothic 폰트 파일 경로
-    pdf.add_font('NanumGothic', '', font_path)
-    pdf.set_font('NanumGothic', size=12)
-
-    pdf.cell(200, 10, text=f"{corp_name} {year}년 {quarter}분기 재무보고서", new_x="LMARGIN", new_y="NEXT", align='C')
-
-    pdf.ln(10)
-    pdf.cell(200, 10, text=f"총매출: {sales}", new_x="LMARGIN", new_y="NEXT", align='L')
-    pdf.cell(200, 10, text=f"영업이익: {operating_income}", new_x="LMARGIN", new_y="NEXT", align='L')
-
-    pdf.output(f"{corp_name}_{year}_{quarter}_재무보고서.pdf")
+    return report_df
 
 
 # 사용자 입력 받기
@@ -88,15 +82,6 @@ for year in years:
         try:
             print(f'{corp_name}의 {year}년 {quarter}분기 데이터를 가져오는 중...')
             df = get_report(df_listed, corp_name, year.strip(), quarter.strip(), fs_div)
-
-            # 손익계산서 추출
-            IS = df[df['sj_div'] == 'IS'].dropna(axis=1).reset_index(drop=True)
-
-            # 영업이익 및 총매출 추출
-            sales, operating_income = extract_key_metrics(IS)
-
-            # PDF 생성
-            create_pdf(corp_name, year.strip(), quarter.strip(), sales, operating_income)
-
+            report_df = split_report(corp_name, year.strip(), quarter.strip(), df)
         except Exception as e:
             print(f'{corp_name}의 {year}년 {quarter}분기 데이터 가져오기에 실패했습니다: {e}')
