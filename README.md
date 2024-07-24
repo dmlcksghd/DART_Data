@@ -6,10 +6,9 @@
 
 API 키 필요함(DART에서 API 키 받아야함)
 
-pip install selenium fpdf matplotlib requests beautifulsoup4 pdfplumber dart-fss pandas
+pip install scikit-learn fpdf matplotlib requests beautifulsoup4 pdfplumber dart-fss pandas
 
-pip install webdriver-manager
-pip install selenium
+pip install scikit-learn
 pip install fpdf
 pip install matplotlib
 pip install requests
