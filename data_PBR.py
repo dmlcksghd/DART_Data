@@ -65,7 +65,9 @@ def get_pbr_one_companies(trdDd):
     # PBR 값이 1인 종목 찾기
     pbr_one_df = df[df['PBR'] == 1]
 
-    return pbr_one_df
+    # PBR 값이 1인 종목의 종목명만 반환
+    return pbr_one_df['종목명'].tolist()
+
 
 if __name__ == "__main__":
     trdDd = '20240724'
