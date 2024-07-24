@@ -2,7 +2,7 @@ import pandas as pd
 from stock import get_pbr_one_stock_data
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LinearRegression
-
+from sklearn.metrics import mean_squared_error, r2_score
 
 # PBR이 1인 기업들의 주가 데이터 가져오기
 trdDd = '20240724'
@@ -32,3 +32,16 @@ mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
 print(f'Mean Squared Error: {mse}')
 print(f'R^2 Score: {r2}')
+
+# 인위적으로 낮춘 데이터와 예측 데이터 시각화
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10, 6))
+plt.plot(pbr_one_stock_data['종가'].values, label='Actual Price', color='blue')
+plt.plot(pbr_one_stock_data['Lowered_Price'].values, label='Lowered Price', color='orange')
+plt.plot(pbr_one_stock_data['Predicted_Price'].values, label='Predicted Price', color='green')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.title('Actual, Lowered, and Predicted Prices')
+plt.show()
