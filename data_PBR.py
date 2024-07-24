@@ -68,19 +68,40 @@ def get_pbr_one_companies(trdDd):
     data = StringIO(csv_content)
     df = pd.read_csv(data)
 
-    # PBR 값이 1부터 1.2까지의 종목 찾기
-    pbr_one_df = df[(df['PBR'] >= 1) & (df['PBR'] <= 1.2)]
+    ###################################################
+    # PBR 값이 1인 종목 찾기
+    pbr_one_df = df[df['PBR'] == 1]
 
     # PBR 값이 1인 종목의 종목명만 반환
-    return pbr_one_df['종목명'].tolist()
+    #return pbr_one_df['종목명'].tolist()
+    return df
+    ####################################################
+def get_pbr_less_one(df):
+    # PBR 값이 1 보다 작은 종목 찾기
+    pbr_less_one_df = df[df['PBR'] < 1]
+
+    # PBR 값으로 오름차순 정렬
+    pbr_less_one_df = pbr_less_one_df.sort_values(by='PBR', ascending=True)
+
+    # 상위 100개 종목 추출
+    top_100_df = pbr_less_one_df.head(100)
+
+    # 종목명과 PBR 값을 튜플로 구성된 리스트로 반환
+    return list(zip(top_100_df['종목명'], top_100_df['PBR']))
+
 
 
 if __name__ == "__main__":
     trdDd = '20240724'
-    pbr_one_df = get_pbr_one_companies(trdDd)
+    df = get_pbr_one_companies(trdDd)
     # PBR 값이 1인 종목 개수 출력
     # pbr_one_count = pbr_one_df.shape[0]
 
     # 결과 출력
     # print("PBR 값이 1인 종목 개수:", br_one_count)
-    print(pbr_one_df)
+
+    pbr_one_df = df[df['PBR'] == 1]['종목명'].tolist()  # PBR 값이 1인 종목명만 리스트로 반환
+    pbr_less_one_df = get_pbr_less_one(df)
+
+    print("PBR 값이 1인 종목:", pbr_one_df)
+    print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):", pbr_less_one_df)
