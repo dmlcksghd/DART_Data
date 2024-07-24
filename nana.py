@@ -1,104 +1,107 @@
-import requests as rq
-from bs4 import BeautifulSoup
+import requests
 import pandas as pd
-from io import BytesIO
-import re
-import boto3  # NCP의 Object Storage를 사용하기 위한 라이브러리
+from io import StringIO
 
+def get_pbr_one_companies(trdDd):
+    # OTP 생성 URL
+    otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
 
-# 네이버 클라우드 플랫폼 Object Storage의 기본 설정
-def get_ncp_client():
-    return boto3.client(
-        's3',
-        endpoint_url='https://kr.object.ncloudstorage.com',
-        aws_access_key_id='hV9URHB6YPU1yqoZ9bQO',
-        aws_secret_access_key='5smCCHD3jIUX66EQvXQc1EEkWcEZejMuUdSqmDeg'
-    )
+    # 다운로드 URL
+    download_url = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd'
 
-
-def upload_to_object_storage(file_content, bucket_name, object_name):
-    s3 = get_ncp_client()
-    s3.put_object(Bucket=bucket_name, Key=object_name, Body=file_content)
-    print(f"File uploaded to {bucket_name}/{object_name}")
-
-
-# 최근 영업일 데이터 추출
-def get_recent_business_day():
-    url = 'https://finance.naver.com/sise/sise_deposit.nhn'
-    data = rq.get(url)
-    data_html = BeautifulSoup(data.content, 'html.parser')
-    parse_day = data_html.select_one('div.subtop_sise_graph2 > ul.subtop_chart_note > li > span.tah').text
-    biz_day = re.findall('[0-9]+', parse_day)
-    return ''.join(biz_day)
-
-
-# 업종 분류 현황 크롤링
-def get_sector_data(biz_day):
-    gen_otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
-    down_url = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd'
-
-    gen_otp_stk = {
-        'mktId': 'STK',
-        'trdDd': biz_day,
-        'money': '1',
-        'csvxls_isNo': 'false',
-        'name': 'fileDown',
-        'url': 'dbms/MDC/STAT/standard/MDCSTAT03901'
+    # OTP 요청 헤더
+    otp_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
     }
 
-    headers = {'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader'}
-    otp_stk = rq.post(gen_otp_url, gen_otp_stk, headers=headers).text
-    down_sector_stk = rq.post(down_url, {'code': otp_stk}, headers=headers)
-    sector_stk = pd.read_csv(BytesIO(down_sector_stk.content), encoding='EUC-KR')
-
-    return sector_stk
-
-
-# 개별 종목 데이터 크롤링
-def get_individual_data(biz_day):
-    gen_otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
-    down_url = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd'
-
-    gen_otp_data = {
-        'searchType': '1',
-        'mktId': 'ALL',
-        'trdDd': biz_day,
-        'csvxls_isNo': 'false',
+    # OTP 요청 페이로드
+    otp_payload = {
+        'bld': 'dbms/MDC/STAT/standard/MDCSTAT03501',
         'name': 'fileDown',
-        'url': 'dbms/MDC/STAT/standard/MDCSTAT03501'
+        'filetype': 'csv',
+        'url': 'dbms/MDC/STAT/standard/MDCSTAT03501',
+        'mktId': 'ALL',       # 전체 시장
+        'trdDd': '20240724',  # 최근 거래일자 사용
+        'share': '1',         # 매개변수 (필요시 조정)
+        'money': '1',         # 매개변수 (필요시 조정)
+        'csvxls_isNo': 'false'
     }
 
-    headers = {'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader'}
-    otp = rq.post(gen_otp_url, gen_otp_data, headers=headers).text
-    krx_ind = rq.post(down_url, {'code': otp}, headers=headers)
-    krx_ind = pd.read_csv(BytesIO(krx_ind.content), encoding='EUC-KR')
+    # OTP 생성 요청
+    otp_response = requests.post(otp_url, headers=otp_headers, data=otp_payload)
+    otp = otp_response.text  # OTP 값 추출
 
-    return krx_ind
+    # 다운로드 요청 헤더
+    download_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020502',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Cache-Control': 'max-age=0',
+        'Connection': 'keep-alive',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': '__smVisitorID=5AohOPWW0ba; JSESSIONID=yZCQcKhrcJJOPjvX1kAmTdKqUEdUJKR6JrrsJR3D5jxgBUkTz4fRAJUN2QWtM1rs.bWRjX2RvbWFpbi9tZGNvd2FwMS1tZGNhcHAwMQ==',
+        'Host': 'data.krx.co.kr',
+        'Origin': 'http://data.krx.co.kr',
+        'Upgrade-Insecure-Requests': '1'
+    }
+
+    # 다운로드 요청 페이로드
+    download_payload = {
+        'code': otp,
+        'name': 'fileDown',
+        'filetype': 'csv'
+    }
+
+    # CSV 파일 다운로드
+    csv_response = requests.post(download_url, headers=download_headers, data=download_payload)
+
+    # CSV 파일 저장
+    csv_file_path = 'prb_data.csv'
+    with open(csv_file_path, 'wb') as file:
+        file.write(csv_response.content)
+
+    # CSV 데이터를 데이터 프레임으로 읽기
+    csv_content = csv_response.content.decode('euc-kr')  # 한글 인코딩 처리
+    data = StringIO(csv_content)
+    df = pd.read_csv(data)
+
+    ###################################################
+    # PBR 값이 1인 종목 찾기
+    pbr_one_df = df[df['PBR'] == 1]
+
+    # PBR 값이 1인 종목의 종목명만 반환
+    #return pbr_one_df['종목명'].tolist()
+    return df
+    ####################################################
+def get_pbr_less_one(df):
+    # PBR 값이 1 보다 작은 종목 찾기
+    pbr_less_one_df = df[df['PBR'] < 1]
+
+    # PBR 값으로 오름차순 정렬
+    pbr_less_one_df = pbr_less_one_df.sort_values(by='PBR', ascending=True)
+
+    # 상위 100개 종목 추출
+    top_100_df = pbr_less_one_df.head(100)
+
+    # 종목명과 PBR 값을 튜플로 구성된 리스트로 반환
+    return list(zip(top_100_df['종목명'], top_100_df['PBR']))
 
 
-# 주식 데이터 크롤링 및 NCP Object Storage에 저장
-def process_and_upload_data():
-    biz_day = get_recent_business_day()
-
-    # 업종 분류 데이터 크롤링
-    sector_stk = get_sector_data(biz_day)
-
-    # 개별 종목 데이터 크롤링
-    krx_ind = get_individual_data(biz_day)
-
-    # DataFrame을 CSV로 변환
-    sector_stk_csv = BytesIO()
-    sector_stk.to_csv(sector_stk_csv, index=False, encoding='utf-8')
-    sector_stk_csv.seek(0)
-
-    ind_data_csv = BytesIO()
-    krx_ind.to_csv(ind_data_csv, index=False, encoding='utf-8')
-    ind_data_csv.seek(0)
-
-    # NCP Object Storage에 업로드
-    upload_to_object_storage(sector_stk_csv, 'financial', f'sector_data_{biz_day}.csv')
-    upload_to_object_storage(ind_data_csv, 'financial', f'individual_data_{biz_day}.csv')
-g
 
 if __name__ == "__main__":
-    process_and_upload_data()
+    trdDd = '20240724'
+    df = get_pbr_one_companies(trdDd)
+    # PBR 값이 1인 종목 개수 출력
+    # pbr_one_count = pbr_one_df.shape[0]
+
+    # 결과 출력
+    # print("PBR 값이 1인 종목 개수:", br_one_count)
+
+    pbr_one_df = df[df['PBR'] == 1]['종목명'].tolist()  # PBR 값이 1인 종목명만 리스트로 반환
+    pbr_less_one_df = get_pbr_less_one(df)
+
+    print("PBR 값이 1인 종목:", pbr_one_df)
+    print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):", pbr_less_one_df)
