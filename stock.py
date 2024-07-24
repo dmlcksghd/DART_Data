@@ -66,8 +66,7 @@ def get_stock_data(trdDd):
 
     return stock_df
 
-if __name__ == "__main__":
-    trdDd = '20240724'
+def get_pbr_one_stock_data(trdDd):
     # 전체 종목 주가 데이터 가져오기
     stock_data = get_stock_data(trdDd)
 
@@ -77,8 +76,13 @@ if __name__ == "__main__":
     # PBR이 1인 기업들의 주가 데이터 필터링
     pbr_one_stock_data = stock_data[stock_data['종목명'].isin(pbr_one_names)]
 
+    return pbr_one_stock_data
+
+if __name__ == "__main__":
+    trdDd = '20240724'
+
     # 결과 출력
-    print(pbr_one_stock_data)
+    # print(pbr_one_stock_data)
 
     # PBR이 1인 기업들의 주가 데이터를 CSV 파일로 저장
     # pbr_one_stock_data.to_csv('PBR_One_Stock_Data.csv', index=False, encoding='utf-8-sig')
