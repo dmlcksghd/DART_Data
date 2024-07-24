@@ -59,6 +59,11 @@ def get_stock_data(trdDd):
     # CSV 파일 다운로드
     csv_response = requests.post(download_url, headers=download_headers, data=download_payload)
 
+    # CSV 파일 저장
+    csv_file_path = 'stock_data.csv'
+    with open(csv_file_path, 'wb') as file:
+        file.write(csv_response.content)
+
     # CSV 데이터를 데이터 프레임으로 읽기
     csv_content = csv_response.content.decode('euc-kr')  # 한글 인코딩 처리
     data = StringIO(csv_content)
@@ -80,7 +85,15 @@ def get_pbr_one_stock_data(trdDd):
 
 if __name__ == "__main__":
     trdDd = '20240724'
+    # 전체 종목 주가 데이터 가져오기
+    stock_data = get_stock_data(trdDd)
 
+    # PBR이 1인 기업들의 종목명 가져오기
+    pbr_one_names = get_pbr_one_companies(trdDd)
+
+    # PBR이 1인 기업들의 주가 데이터 필터링
+    pbr_one_stock_data = stock_data[stock_data['종목명'].isin(pbr_one_names)]
+    print(pbr_one_stock_data)
     # 결과 출력
     # print(pbr_one_stock_data)
 
