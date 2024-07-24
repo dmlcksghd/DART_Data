@@ -68,8 +68,8 @@ def get_pbr_one_companies(trdDd):
     data = StringIO(csv_content)
     df = pd.read_csv(data)
 
-    # PBR 값이 1인 종목 찾기
-    pbr_one_df = df[df['PBR'] == 1]
+    # PBR 값이 1부터 1.2까지의 종목 찾기
+    pbr_one_df = df[(df['PBR'] >= 1) & (df['PBR'] <= 1.2)]
 
     # PBR 값이 1인 종목의 종목명만 반환
     return pbr_one_df['종목명'].tolist()

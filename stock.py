@@ -93,7 +93,6 @@ if __name__ == "__main__":
 
     # PBR이 1인 기업들의 주가 데이터 필터링
     pbr_one_stock_data = stock_data[stock_data['종목명'].isin(pbr_one_names)]
-    print(pbr_one_stock_data)
     # 결과 출력
     # print(pbr_one_stock_data)
 
