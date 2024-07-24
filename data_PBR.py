@@ -22,7 +22,7 @@ def get_pbr_one_companies(trdDd):
         'filetype': 'csv',
         'url': 'dbms/MDC/STAT/standard/MDCSTAT03501',
         'mktId': 'ALL',       # 전체 시장
-        'trdDd': '20240724',  # 최근 거래일자 사용
+        'trdDd': trdDd,  # 입력된 거래일자 사용
         'share': '1',         # 매개변수 (필요시 조정)
         'money': '1',         # 매개변수 (필요시 조정)
         'csvxls_isNo': 'false'
@@ -58,50 +58,24 @@ def get_pbr_one_companies(trdDd):
     # CSV 파일 다운로드
     csv_response = requests.post(download_url, headers=download_headers, data=download_payload)
 
-    # CSV 파일 저장
-    csv_file_path = 'prb_data.csv'
-    with open(csv_file_path, 'wb') as file:
-        file.write(csv_response.content)
-
     # CSV 데이터를 데이터 프레임으로 읽기
     csv_content = csv_response.content.decode('euc-kr')  # 한글 인코딩 처리
     data = StringIO(csv_content)
     df = pd.read_csv(data)
 
-    ###################################################
     # PBR 값이 1인 종목 찾기
     pbr_one_df = df[df['PBR'] == 1]
 
-    # PBR 값이 1인 종목의 종목명만 반환
-    #return pbr_one_df['종목명'].tolist()
-    return df
-    ####################################################
-def get_pbr_less_one(df):
-    # PBR 값이 1 보다 작은 종목 찾기
-    pbr_less_one_df = df[df['PBR'] < 1]
+    # PBR 값이 1보다 작은 종목 찾기
+    pbr_less_one_df = df[df['PBR'] < 1].sort_values(by='PBR', ascending=True).head(100)
 
-    # PBR 값으로 오름차순 정렬
-    pbr_less_one_df = pbr_less_one_df.sort_values(by='PBR', ascending=True)
-
-    # 상위 100개 종목 추출
-    top_100_df = pbr_less_one_df.head(100)
-
-    # 종목명과 PBR 값을 튜플로 구성된 리스트로 반환
-    return list(zip(top_100_df['종목명'], top_100_df['PBR']))
-
-
+    # 두 데이터프레임 반환
+    return pbr_one_df['종목명'].tolist(), pbr_less_one_df
 
 if __name__ == "__main__":
-    trdDd = '20240724'
-    df = get_pbr_one_companies(trdDd)
-    # PBR 값이 1인 종목 개수 출력
-    # pbr_one_count = pbr_one_df.shape[0]
+    trdDd = '20240724'  # 거래일자 설정
+    pbr_one_df, pbr_less_one_df = get_pbr_one_companies(trdDd)
 
     # 결과 출력
-    # print("PBR 값이 1인 종목 개수:", br_one_count)
-
-    pbr_one_df = df[df['PBR'] == 1]['종목명'].tolist()  # PBR 값이 1인 종목명만 리스트로 반환
-    pbr_less_one_df = get_pbr_less_one(df)
-
     print("PBR 값이 1인 종목:", pbr_one_df)
-    print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):", pbr_less_one_df)
+    print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):", list(zip(pbr_less_one_df['종목명'], pbr_less_one_df['PBR'])))

@@ -76,7 +76,7 @@ def get_pbr_one_stock_data(trdDd):
     stock_data = get_stock_data(trdDd)
 
     # PBR이 1인 기업들의 종목명 가져오기
-    pbr_one_names = get_pbr_one_companies(trdDd)
+    pbr_one_names, _ = get_pbr_one_companies(trdDd)
 
     # PBR이 1인 기업들의 주가 데이터 필터링
     pbr_one_stock_data = stock_data[stock_data['종목명'].isin(pbr_one_names)]
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     stock_data = get_stock_data(trdDd)
 
     # PBR이 1인 기업들의 종목명 가져오기
-    pbr_one_names = get_pbr_one_companies(trdDd)
+    pbr_one_names, pbr_less_one_df = get_pbr_one_companies(trdDd)
 
     # PBR이 1인 기업들의 주가 데이터 필터링
     pbr_one_stock_data = stock_data[stock_data['종목명'].isin(pbr_one_names)]
