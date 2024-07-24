@@ -6,8 +6,10 @@
 
 API 키 필요함(DART에서 API 키 받아야함)
 
-pip install fpdf matplotlib requests beautifulsoup4 pdfplumber dart-fss pandas
+pip install selenium fpdf matplotlib requests beautifulsoup4 pdfplumber dart-fss pandas
 
+pip install webdriver-manager
+pip install selenium
 pip install fpdf
 pip install matplotlib
 pip install requests
@@ -15,6 +17,10 @@ pip install beautifulsoup4
 pip install pdfplumber
 pip install dart-fss
 pip install pandas
+pip install yfinance
+pip install --upgrade requests urllib3
+
+
 
 requests: HTTP 요청을 보내기 위한 라이브러리입니다.
 beautifulsoup4: HTML 및 XML 파일을 파싱하기 위한 라이브러리입니다.
@@ -41,3 +47,5 @@ split_report 함수는 가져온 재무제표 데이터를 별도의 카테고�
 
 예시 삼성전자 2024 1분기
 ![img.png](img.png)
+
+PBR = 주가 / 순자산(주당 순자산 가치)

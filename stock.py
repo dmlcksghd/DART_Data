@@ -71,3 +71,4 @@ pbr_one_count = pbr_one_df.shape[0]
 # 결과 출력
 print("PBR 값이 1인 종목 개수:", pbr_one_count)
 print(pbr_one_df)
+이 코드는 stock_PBRdata_learn.py야 이 파일의 역할은 국내의 기업에서 PBR이 1인 기업을 찾는거야. 이 코드에서 나온 PBR이 1인 기업을 찾아서 반환하면 stock_learn.py에서 기업들을 받아서 KRX에서 해당 기업의 주가를 가져와서, 해당 주가를 낮춘다음 학습시켜서 원래주가를 찾을 수 있도록 해.
