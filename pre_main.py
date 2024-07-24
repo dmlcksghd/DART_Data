@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import joblib
 from stock import get_pbr_one_stock_data
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LinearRegression
@@ -53,3 +54,7 @@ plt.ylabel('Price')
 plt.legend()
 plt.title('Actual, Lowered, and Predicted Prices')
 plt.show()
+
+# 모델 저장
+joblib.dump(model, 'one_pbr_model.pkl')
+
