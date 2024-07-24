@@ -1,6 +1,7 @@
 import requests
 import pandas as pd
 from io import StringIO
+
 def get_pbr_one_companies(trdDd):
     # OTP 생성 URL
     otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
@@ -12,7 +13,7 @@ def get_pbr_one_companies(trdDd):
     otp_headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-}
+    }
 
     # OTP 요청 페이로드
     otp_payload = {
@@ -25,7 +26,7 @@ def get_pbr_one_companies(trdDd):
         'share': '1',         # 매개변수 (필요시 조정)
         'money': '1',         # 매개변수 (필요시 조정)
         'csvxls_isNo': 'false'
-}
+    }
 
     # OTP 생성 요청
     otp_response = requests.post(otp_url, headers=otp_headers, data=otp_payload)
@@ -45,17 +46,22 @@ def get_pbr_one_companies(trdDd):
         'Host': 'data.krx.co.kr',
         'Origin': 'http://data.krx.co.kr',
         'Upgrade-Insecure-Requests': '1'
-}
+    }
 
     # 다운로드 요청 페이로드
     download_payload = {
         'code': otp,
         'name': 'fileDown',
         'filetype': 'csv'
-}
+    }
 
     # CSV 파일 다운로드
     csv_response = requests.post(download_url, headers=download_headers, data=download_payload)
+
+    # CSV 파일 저장
+    csv_file_path = 'prb_data.csv'
+    with open(csv_file_path, 'wb') as file:
+        file.write(csv_response.content)
 
     # CSV 데이터를 데이터 프레임으로 읽기
     csv_content = csv_response.content.decode('euc-kr')  # 한글 인코딩 처리
