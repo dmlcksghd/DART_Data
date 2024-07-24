@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from stock import get_pbr_one_stock_data
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LinearRegression
@@ -8,8 +9,10 @@ from sklearn.metrics import mean_squared_error, r2_score
 trdDd = '20240724'
 pbr_one_stock_data = get_pbr_one_stock_data(trdDd)
 
-# 인위적으로 주가를 낮춘 데이터 생성
-pbr_one_stock_data['Lowered_Price'] = pbr_one_stock_data['종가'] * 0.7
+# 인위적으로 주가를 낮춘 데이터 생성(0.60에서 0.95 사이의 랜덤한 값을 곱하여 낮춤)
+np.random.seed(0)   # 랜덤 시드 고정
+random_factors = np.random.uniform(0.60, 0.95, size=pbr_one_stock_data.shape[0])
+pbr_one_stock_data['Lowered_Price'] = pbr_one_stock_data['종가'] * random_factors
 
 # 데이터 분할
 X = pbr_one_stock_data['Lowered_Price'].values.reshape(-1, 1)
@@ -19,6 +22,11 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 # 모델 학습
 model = LinearRegression()
 model.fit(X_train, y_train)
+
+# 교차 검증
+cv_scores = cross_val_score(model, X, y, cv=5)
+print(f'Cross-Validation Scores: {cv_scores}')
+print(f'Mean CV Score: {cv_scores.mean()}')
 
 # 예측
 pbr_one_stock_data['Predicted_Price'] = model.predict(X)
