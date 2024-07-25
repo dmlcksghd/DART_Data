@@ -1,6 +1,7 @@
 import requests
 import pandas as pd
 from io import StringIO
+from datetime import datetime
 
 def get_pbr_one_companies(trdDd):
     # OTP 생성 URL
@@ -92,7 +93,7 @@ def get_pbr_less_one(df):
 
 
 if __name__ == "__main__":
-    trdDd = '20240724'
+    trdDd = datetime.now().strftime('%Y%m%d')
     df = get_pbr_one_companies(trdDd)
     # PBR 값이 1인 종목 개수 출력
     # pbr_one_count = pbr_one_df.shape[0]
