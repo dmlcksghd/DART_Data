@@ -24,7 +24,7 @@ def check_empty_files(directory):
     return empty_files
 
 if __name__ == "__main__":
-    directory = 'nana_stock_data'
+    directory = 'stock_data'
     empty_files = check_empty_files(directory)
 
     if empty_files:
