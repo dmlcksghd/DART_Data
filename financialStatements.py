@@ -1,10 +1,11 @@
 import os
 import dart_fss
 import pandas as pd
-from data_PBR import get_pbr_one_companies
+from data_PBR import get_pbr_less_one_companies
+from datetime import datetime
 
 # DART API 키 설정
-api_key = "016a4403b670e2278235ce4bd28752e47bb33a30"
+api_key = ""
 dart_fss.set_api_key(api_key=api_key)
 
 # 종목 목록 가져오기
@@ -13,9 +14,9 @@ all_corps = dart_fss.api.filings.get_corp_code()
 df = pd.DataFrame(all_corps)
 df_listed = df[df['stock_code'].notnull()].reset_index(drop=True)
 
+
 # 특정 재무제표 데이터 가져오기
 def get_report(corp_df, corp_name, bsns_year, num, fs_div):
-    """기업명과 사업연도, 분기, 재무제표 구분을 입력받아 재무제표 데이터를 가져오는 함수"""
     corp_code = corp_df[corp_df['corp_name'] == corp_name].iloc[0, 0]
     bsns_year = str(bsns_year)
 
@@ -25,7 +26,7 @@ def get_report(corp_df, corp_name, bsns_year, num, fs_div):
         reprt_code = '11014'
     elif num == '2':
         reprt_code = '11012'
-    else:  # num == 1 or else
+    else:
         reprt_code = '11013'
 
     data = dart_fss.api.finance.fnltt_singl_acnt_all(corp_code, bsns_year, reprt_code, fs_div, api_key=api_key)['list']
@@ -33,15 +34,9 @@ def get_report(corp_df, corp_name, bsns_year, num, fs_div):
 
     return df
 
-# pandas 출력 옵션 설정
-pd.set_option('display.max_columns', None)  # 모든 열 출력
-pd.set_option('display.max_rows', None)  # 모든 행 출력
-pd.set_option('display.max_colwidth', None)  # 모든 열 너비 출력
 
 # 재무제표 데이터를 분할하여 저장 및 출력
 def split_report(corp_name, bsns_year, num, df):
-    """재무제표 데이터를 각각의 CSV 파일로 저장하고 출력하는 함수"""
-    # 필요한 항목만 추출
     items_of_interest = {
         '자산 총액': 'ifrs-full_Assets',
         '부채 총액': 'ifrs-full_Liabilities',
@@ -73,20 +68,33 @@ def split_report(corp_name, bsns_year, num, df):
 
     return report_df
 
-if __name__ == "__main__":
-    trdDd = '20240724'  # 거래일자 설정
-    pbr_one_list, pbr_less_one_df = get_pbr_one_companies(trdDd)
 
-    years = ['2024']  # 조회할 연도들
-    quarters = ['1']  # 조회할 분기들
-    fs_div = 'CFS'  # 연결재무제표
+def get_financial_statements(trdDd):
+    pbr_less_one_df = get_pbr_less_one_companies(trdDd)
+
+    # 현재 연도와 과거 3년 포함
+    current_year = datetime.now().year
+    years = [str(year) for year in range(current_year - 3, current_year + 1)]
+
+    quarters = ['1', '2', '3', '4']  # 모든 분기 포함
+    fs_div = 'CFS'
+
+    financial_data = []
 
     for corp_name in pbr_less_one_df['종목명'].tolist():
         for year in years:
             for quarter in quarters:
                 try:
-                    print(f'{corp_name}의 {year}년 {quarter}분기 데이터를 가져오는 중...')
                     df = get_report(df_listed, corp_name, year.strip(), quarter.strip(), fs_div)
                     report_df = split_report(corp_name, year.strip(), quarter.strip(), df)
+                    financial_data.append(report_df)
                 except Exception as e:
                     print(f'{corp_name}의 {year}년 {quarter}분기 데이터 가져오기에 실패했습니다: {e}')
+
+    return pd.concat(financial_data, ignore_index=True)
+
+
+if __name__ == "__main__":
+    trdDd = '20240724'
+    financial_statements = get_financial_statements(trdDd)
+    print(financial_statements)

@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 from io import StringIO
 
-def get_pbr_one_companies(trdDd):
+def get_pbr_less_one_companies(trdDd):
     # OTP 생성 URL
     otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
 
@@ -63,19 +63,15 @@ def get_pbr_one_companies(trdDd):
     data = StringIO(csv_content)
     df = pd.read_csv(data)
 
-    # PBR 값이 1인 종목 찾기
-    pbr_one_df = df[df['PBR'] == 1]
-
     # PBR 값이 1보다 작은 종목 찾기
     pbr_less_one_df = df[df['PBR'] < 1].sort_values(by='PBR', ascending=True).head(100)
 
-    # 두 데이터프레임 반환
-    return pbr_one_df['종목명'].tolist(), pbr_less_one_df
+    # 데이터프레임 반환
+    return pbr_less_one_df
 
 if __name__ == "__main__":
     trdDd = '20240724'  # 거래일자 설정
-    pbr_one_df, pbr_less_one_df = get_pbr_one_companies(trdDd)
+    pbr_less_one_df = get_pbr_less_one_companies(trdDd)
 
     # 결과 출력
-    print("PBR 값이 1인 종목:", pbr_one_df)
-    print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):", list(zip(pbr_less_one_df['종목명'], pbr_less_one_df['PBR'])))
+    print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):", pbr_less_one_df)

@@ -1,7 +1,10 @@
 import requests
 import pandas as pd
 from io import StringIO
-from data_PBR import get_pbr_one_companies
+from data_PBR import get_pbr_less_one_companies
+import os
+from datetime import datetime
+
 
 def get_stock_data(trdDd):
     # OTP 생성 URL (주가 데이터용)
@@ -22,7 +25,7 @@ def get_stock_data(trdDd):
         'name': 'fileDown',
         'filetype': 'csv',
         'url': 'dbms/MDC/STAT/standard/MDCSTAT01501',
-        'mktId': 'ALL',       # 전체 시장
+        'mktId': 'ALL',  # 전체 시장
         'trdDd': trdDd,  # 거래일자
         'share': '1',
         'money': '1',
@@ -59,8 +62,13 @@ def get_stock_data(trdDd):
     # CSV 파일 다운로드
     csv_response = requests.post(download_url, headers=download_headers, data=download_payload)
 
+    # 저장 디렉토리 설정
+    save_dir = 'stock_data'
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
     # CSV 파일 저장
-    csv_file_path = 'stock_data.csv'
+    csv_file_path = os.path.join(save_dir, f'stock_data_{trdDd}.csv')
     with open(csv_file_path, 'wb') as file:
         file.write(csv_response.content)
 
@@ -71,33 +79,49 @@ def get_stock_data(trdDd):
 
     return stock_df
 
-def get_pbr_one_stock_data(trdDd):
-    # 전체 종목 주가 데이터 가져오기
-    stock_data = get_stock_data(trdDd)
 
-    # PBR이 1인 기업들의 종목명 가져오기
-    pbr_one_names, _ = get_pbr_one_companies(trdDd)
+def get_pbr_less_or_equal_stock_data():
+    stock_data_list = []
 
-    # PBR이 1인 기업들의 주가 데이터 필터링
-    pbr_one_stock_data = stock_data[stock_data['종목명'].isin(pbr_one_names)]
+    # 현재 연도와 과거 3년 포함
+    current_year = datetime.now().year
+    years = [str(year) for year in range(current_year - 3, current_year + 1)]
+    quarters = ['01', '04', '07', '10']  # 각 분기의 첫 달 선택
 
-    return pbr_one_stock_data
+    # 시작 연도와 종료 연도를 기반으로 데이터를 수집
+    for year in years:
+        for quarter in quarters:
+            trdDd = f'{year}{quarter}01'
+            stock_data = get_stock_data(trdDd)
+            stock_data['날짜'] = trdDd
+            stock_data_list.append(stock_data)
+
+    # 수집한 데이터를 하나의 데이터프레임으로 병합
+    all_stock_data = pd.concat(stock_data_list, ignore_index=True)
+
+    # PBR이 1 이하인 기업들의 종목명 가져오기 (최근 날짜 기준)
+    pbr_less_one_df = get_pbr_less_one_companies(datetime.now().strftime('%Y%m%d'))
+
+    # PBR이 1 이하인 기업들의 주가 데이터 필터링
+    pbr_less_or_equal_stock_data = all_stock_data[all_stock_data['종목명'].isin(pbr_less_one_df['종목명'])]
+
+    return pbr_less_or_equal_stock_data
+
 
 if __name__ == "__main__":
-    trdDd = '20240724'
-    # 전체 종목 주가 데이터 가져오기
-    stock_data = get_stock_data(trdDd)
+    # PBR이 1 이하인 기업들의 주가 데이터 가져오기
+    pbr_less_or_equal_stock_data = get_pbr_less_or_equal_stock_data()
 
-    # PBR이 1인 기업들의 종목명 가져오기
-    pbr_one_names, pbr_less_one_df = get_pbr_one_companies(trdDd)
+    # pandas 옵션 설정 (모든 열과 행을 표시하지 않도록 기본 설정 사용)
+    pd.set_option('display.max_columns', None)  # 모든 열을 출력하도록 설정
 
-    # PBR이 1인 기업들의 주가 데이터 필터링
-    pbr_one_stock_data = stock_data[stock_data['종목명'].isin(pbr_one_names)]
-    # 결과 출력
-    print(pbr_one_stock_data)
+    # 결과 출력 (상위 5개 행만 출력)
+    print(pbr_less_or_equal_stock_data.head())
 
-    # PBR이 1인 기업들의 주가 데이터를 CSV 파일로 저장
-    pbr_one_stock_data.to_csv('PBR_One_Stock_Data.csv', index=False, encoding='utf-8-sig')
+    # PBR이 1 이하인 기업들의 주가 데이터를 CSV 파일로 저장
+    save_dir = 'stock_data'
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
-    # stock_data = get_stock_data(trdDd)
-    # print(stock_data.head())
+    pbr_less_or_equal_stock_data.to_csv(os.path.join(save_dir, 'PBR_Less_Or_Equal_Stock_Data.csv'), index=False,
+                                        encoding='utf-8-sig')
