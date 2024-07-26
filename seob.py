@@ -159,10 +159,11 @@ def get_pbr_less_one(df):
     pbr_less_one_df = pbr_less_one_df.sort_values(by='PBR', ascending=True)
 
     # 상위 100개 종목 추출
-    top_100_df = pbr_less_one_df.head(100)
+    #top_100_df = pbr_less_one_df.head(100)
 
     # 종목명과 PBR 값을 튜플로 구성된 리스트로 반환
-    return list(zip(top_100_df['종목명'], top_100_df['PBR']))
+    #return list(zip(top_100_df['종목명'], top_100_df['PBR']))
+    return pbr_less_one_df
 
 def get_join_df(inner, outer):
     result = pd.merge(inner, outer, on='종목코드', how='inner')
@@ -181,6 +182,9 @@ if __name__ == "__main__":
     get_join_pbr_1_df = get_join_df(stock_info_df, pbr_1_df)
 
     get_join_pbr_less_df = get_join_df(stock_info_df, pbr_less_df)
+
+    print(get_join_pbr_1_df)
+    print(get_join_pbr_less_df)
     
 
     
