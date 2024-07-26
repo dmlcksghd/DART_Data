@@ -9,8 +9,12 @@ def is_holiday(date):
     kr_holidays = holidays.KR(years=date.year)
     return date in kr_holidays
 
+def is_last_day_of_month(date):
+    next_day = date + timedelta(days=1)
+    return next_day.month != date.month
+
 def get_recent_weekday(date):
-    while date.weekday() > 4 or is_holiday(date):
+    while date.weekday() > 4 or is_holiday(date) or is_last_day_of_month(date):
         date -= timedelta(days=1)
     return date
 
@@ -89,7 +93,7 @@ if __name__ == "__main__":
     # 현재 날짜와 시간 기록
     request_time = today.strftime('%Y-%m-%d %H:%M:%S')
 
-    # 주말 및 공휴일 확인 후 최근 평일로 조정
+    # 주말, 공휴일, 월 마지막 날 확인 후 최근 평일로 조정
     date_to_use = get_recent_weekday(today)
     trdDd = date_to_use.strftime('%Y%m%d')
 
@@ -104,11 +108,18 @@ if __name__ == "__main__":
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    # CSV 파일명 결정 (주말, 공휴일 여부에 따라)
+    # CSV 파일명 결정 (우선순위: 월 마지막 날 > 공휴일 > 주말)
+    file_suffix = ''
     if today != date_to_use:
-        csv_file_path = os.path.join(save_dir, f'pbr_data_{trdDd}_holiday.csv')
-    else:
-        csv_file_path = os.path.join(save_dir, f'pbr_data_{trdDd}.csv')
+        if is_last_day_of_month(today):
+            file_suffix = '_monthlast'
+        elif today.weekday() > 4:
+            file_suffix = '_weekend'
+        elif is_holiday(today):
+            file_suffix = '_holiday'
+
+
+    csv_file_path = os.path.join(save_dir, f'pbr_data_{trdDd}{file_suffix}.csv')
 
     # CSV 파일로 저장
     pbr_less_one_df.to_csv(csv_file_path, index=False, encoding='utf-8-sig')
