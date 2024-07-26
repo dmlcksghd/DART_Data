@@ -5,7 +5,7 @@ from data_PBR import get_pbr_less_one_companies
 from datetime import datetime
 
 # DART API 키 설정
-api_key = "016a4403b670e2278235ce4bd28752e47bb33a30"
+api_key = ""
 dart_fss.set_api_key(api_key=api_key)
 
 # 종목 목록 가져오기
