@@ -3,7 +3,7 @@ import dart_fss
 import pandas as pd
 from pbr_data import get_pbr_less_one_companies
 from stock_data import get_stock_data, extract_and_save_listing_shares_and_names, find_latest_csv
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # DART API 키 설정
 api_key = ""
@@ -14,6 +14,11 @@ corp_list = dart_fss.get_corp_list()
 all_corps = dart_fss.api.filings.get_corp_code()
 df = pd.DataFrame(all_corps)
 df_listed = df[df['stock_code'].notnull()].reset_index(drop=True)
+
+def get_recent_weekday(date):
+    while date.weekday() >= 5:  # 5: 토요일, 6: 일요일
+        date -= timedelta(days=1)
+    return date
 
 # 특정 재무제표 데이터 가져오기
 def get_report(corp_df, corp_name, bsns_year, num, fs_div):
@@ -60,6 +65,37 @@ def split_report(corp_name, bsns_year, num, df, listing_shares_df):
     # 상장주식수와 조인
     report_df = report_df.merge(listing_shares_df, on='종목명', how='left')
 
+    # ROE, EPS, BPS, 부채비율, 영업이익률, 순이익률 계산
+    if report_df['자본 총액'].iloc[0] and report_df['순이익'].iloc[0]:
+        report_df['ROE'] = (float(report_df['순이익'].iloc[0]) / float(report_df['자본 총액'].iloc[0])) * 100
+    else:
+        report_df['ROE'] = None
+
+    if report_df['순이익'].iloc[0] and report_df['상장주식수'].iloc[0]:
+        report_df['EPS'] = float(report_df['순이익'].iloc[0]) / float(report_df['상장주식수'].iloc[0])
+    else:
+        report_df['EPS'] = None
+
+    if report_df['자본 총액'].iloc[0] and report_df['상장주식수'].iloc[0]:
+        report_df['BPS'] = float(report_df['자본 총액'].iloc[0]) / float(report_df['상장주식수'].iloc[0])
+    else:
+        report_df['BPS'] = None
+
+    if report_df['부채 총액'].iloc[0] and report_df['자본 총액'].iloc[0]:
+        report_df['부채비율'] = (float(report_df['부채 총액'].iloc[0]) / float(report_df['자본 총액'].iloc[0])) * 100
+    else:
+        report_df['부채비율'] = None
+
+    if report_df['영업이익'].iloc[0] and report_df['매출액'].iloc[0]:
+        report_df['영업이익률'] = (float(report_df['영업이익'].iloc[0]) / float(report_df['매출액'].iloc[0])) * 100
+    else:
+        report_df['영업이익률'] = None
+
+    if report_df['순이익'].iloc[0] and report_df['매출액'].iloc[0]:
+        report_df['순이익률'] = (float(report_df['순이익'].iloc[0]) / float(report_df['매출액'].iloc[0])) * 100
+    else:
+        report_df['순이익률'] = None
+
     # 디렉토리 생성
     if not os.path.exists('financialStatements'):
         os.makedirs('financialStatements')
@@ -75,7 +111,7 @@ def get_financial_statements(trdDd, listing_shares_df):
 
     # 현재 연도와 과거 3년 포함
     current_year = datetime.now().year
-    years = [str(year) for year in range(current_year - 1, current_year + 1)]
+    years = [str(year) for year in range(current_year - 3, current_year + 1)]
 
     quarters = ['1', '2', '3', '4']  # 모든 분기 포함
     fs_div = 'CFS'
@@ -95,8 +131,10 @@ def get_financial_statements(trdDd, listing_shares_df):
     return pd.concat(financial_data, ignore_index=True)
 
 if __name__ == "__main__":
-    trdDd = '20240726'   #datetime.now().strftime('%Y%m%d')
-
+    today = datetime.now()
+    recent_weekday = get_recent_weekday(today)
+    trdDd = recent_weekday.strftime('%Y%m%d')
+    
     # 최근에 생성된 CSV 파일에서 상장주식수와 종목명 컬럼만 추출하여 데이터프레임으로 로드
     save_dir = 'stock_data'
     latest_csv_file = find_latest_csv(save_dir)
