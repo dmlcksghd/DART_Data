@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import joblib
-from stock import get_pbr_one_stock_data
+from stock_data import get_pbr_one_stock_data
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score

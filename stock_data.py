@@ -94,10 +94,10 @@ if __name__ == "__main__":
     # PBR이 1인 기업들의 주가 데이터 필터링
     pbr_one_stock_data = stock_data[stock_data['종목명'].isin(pbr_one_names)]
     # 결과 출력
-    # print(pbr_one_stock_data)
+    print(pbr_one_stock_data)
 
     # PBR이 1인 기업들의 주가 데이터를 CSV 파일로 저장
-    # pbr_one_stock_data.to_csv('PBR_One_Stock_Data.csv', index=False, encoding='utf-8-sig')
+    pbr_one_stock_data.to_csv('PBR_One_Stock_Data.csv', index=False, encoding='utf-8-sig')
 
     # stock_data = get_stock_data(trdDd)
     # print(stock_data.head())
