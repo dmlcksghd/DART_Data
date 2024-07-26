@@ -75,7 +75,7 @@ def get_financial_statements(trdDd, listing_shares_df):
 
     # 현재 연도와 과거 3년 포함
     current_year = datetime.now().year
-    years = [str(year) for year in range(current_year - 3, current_year + 1)]
+    years = [str(year) for year in range(current_year - 1, current_year + 1)]
 
     quarters = ['1', '2', '3', '4']  # 모든 분기 포함
     fs_div = 'CFS'
