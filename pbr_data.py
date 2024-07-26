@@ -1,9 +1,18 @@
 import requests
 import pandas as pd
 from io import StringIO
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import holidays
 
+def is_holiday(date):
+    kr_holidays = holidays.KR(years=date.year)
+    return date in kr_holidays
+
+def get_recent_weekday(date):
+    while date.weekday() > 4 or is_holiday(date):
+        date -= timedelta(days=1)
+    return date
 
 def get_pbr_less_one_companies(trdDd):
     # OTP 생성 URL
@@ -72,13 +81,17 @@ def get_pbr_less_one_companies(trdDd):
     # 데이터프레임 반환
     return pbr_less_one_df
 
-
 if __name__ == "__main__":
     # 현재 날짜와 시간으로 trdDd 설정
-    trdDd = datetime.now().strftime('%Y%m%d')
+    today = datetime.now()
+    trdDd = today.strftime('%Y%m%d')
 
     # 현재 날짜와 시간 기록
-    request_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    request_time = today.strftime('%Y-%m-%d %H:%M:%S')
+
+    # 주말 및 공휴일 확인 후 최근 평일로 조정
+    date_to_use = get_recent_weekday(today)
+    trdDd = date_to_use.strftime('%Y%m%d')
 
     pbr_less_one_df = get_pbr_less_one_companies(trdDd)
 
@@ -91,8 +104,13 @@ if __name__ == "__main__":
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
+    # CSV 파일명 결정 (주말, 공휴일 여부에 따라)
+    if today != date_to_use:
+        csv_file_path = os.path.join(save_dir, f'pbr_data_{trdDd}_holiday.csv')
+    else:
+        csv_file_path = os.path.join(save_dir, f'pbr_data_{trdDd}.csv')
+
     # CSV 파일로 저장
-    csv_file_path = os.path.join(save_dir, f'pbr_data_{trdDd}.csv')
     pbr_less_one_df.to_csv(csv_file_path, index=False, encoding='utf-8-sig')
 
     # 요청 시간과 저장 경로 출력
