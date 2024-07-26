@@ -1,6 +1,7 @@
 import requests
 import pandas as pd
 from io import StringIO
+from datetime import datetime
 
 def get_pbr_less_one_companies(trdDd):
     # OTP 생성 URL
@@ -70,7 +71,7 @@ def get_pbr_less_one_companies(trdDd):
     return pbr_less_one_df
 
 if __name__ == "__main__":
-    trdDd = '20240724'  # 거래일자 설정
+    trdDd = datetime.now().strftime('%Y%M%d')  # 거래일자 설정
     pbr_less_one_df = get_pbr_less_one_companies(trdDd)
 
     # 결과 출력
