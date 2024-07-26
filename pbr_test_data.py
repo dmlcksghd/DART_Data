@@ -111,28 +111,24 @@ def save_pbr_data(pbr_df, save_dir, trdDd, file_suffix):
 
     return csv_file_path
 
-if __name__ == "__main__":
-    # 현재 날짜와 시간으로 trdDd 설정
-    today = datetime.now()
-    trdDd = today.strftime('%Y%m%d')
+# 테스트 날짜를 하드코딩하여 결과 확인
+test_date = '20230301'
+test_today = datetime.strptime(test_date, '%Y%m%d')
 
-    # 현재 날짜와 시간 기록
-    request_time = today.strftime('%Y-%m-%d %H:%M:%S')
+# PBR 데이터 가져오기 (조정된 거래일자 포함)
+pbr_less_one_df, adjusted_trdDd = get_pbr_less_one_companies(test_date)
 
-    # PBR 데이터 가져오기 (조정된 거래일자 포함)
-    pbr_less_one_df, adjusted_trdDd = get_pbr_less_one_companies(trdDd)
+# 결과 출력
+print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):")
+print(pbr_less_one_df)
 
-    # 결과 출력
-    print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):")
-    print(pbr_less_one_df)
+# 파일명 접미사 결정
+file_suffix = determine_file_suffix(test_today, datetime.strptime(adjusted_trdDd, '%Y%m%d'))
 
-    # 파일명 접미사 결정
-    file_suffix = determine_file_suffix(today, datetime.strptime(adjusted_trdDd, '%Y%m%d'))
+# 데이터 저장 디렉토리 설정
+save_dir = 'pbr_test_data'
+csv_file_path = save_pbr_data(pbr_less_one_df, save_dir, adjusted_trdDd, file_suffix)
 
-    # 데이터 저장 디렉토리 설정
-    save_dir = 'pbr_data'
-    csv_file_path = save_pbr_data(pbr_less_one_df, save_dir, adjusted_trdDd, file_suffix)
-
-    # 요청 시간과 저장 경로 출력
-    print(f"데이터 요청 시간: {request_time}")
-    print(f"PBR 데이터가 {csv_file_path}에 저장되었습니다.")
+# 요청 시간과 저장 경로 출력
+print(f"데이터 요청 시간: {test_today.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"PBR 데이터가 {csv_file_path}에 저장되었습니다.")
