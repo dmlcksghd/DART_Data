@@ -1,8 +1,9 @@
 import dart_fss
 import pandas as pd
+import os
 
 # DART API 키 설정
-api_key = "016a4403b670e2278235ce4bd28752e47bb33a30"
+api_key = ""
 dart_fss.set_api_key(api_key=api_key)
 
 # 종목 목록 가져오기
@@ -10,7 +11,6 @@ corp_list = dart_fss.get_corp_list()
 all_corps = dart_fss.api.filings.get_corp_code()
 df = pd.DataFrame(all_corps)
 df_listed = df[df['stock_code'].notnull()].reset_index(drop=True)
-
 
 # 특정 재무제표 데이터 가져오기
 def get_report(corp_df, corp_name, bsns_year, num, fs_div):
@@ -32,12 +32,10 @@ def get_report(corp_df, corp_name, bsns_year, num, fs_div):
 
     return df
 
-
 # pandas 출력 옵션 설정
 pd.set_option('display.max_columns', None)  # 모든 열 출력
 pd.set_option('display.max_rows', None)  # 모든 행 출력
 pd.set_option('display.max_colwidth', None)  # 모든 열 너비 출력
-
 
 # 재무제표 데이터를 분할하여 저장 및 출력
 def split_report(corp_name, bsns_year, num, df):
@@ -69,11 +67,12 @@ def split_report(corp_name, bsns_year, num, df):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    file_name = f'{corp_name}_{bsns_year}_{num}Q_report.csv'
+    file_name = os.path.join(directory, f'{corp_name}_{bsns_year}_{num}Q_report.csv')
     report_df.to_csv(file_name, index=False, encoding='utf-8-sig')
     print(f'{file_name} 파일로 저장되었습니다.')
 
     return report_df
+
 
 '''
 # 사용자 입력 받기
