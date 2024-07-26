@@ -1,7 +1,8 @@
 import os
 import dart_fss
 import pandas as pd
-from data_PBR import get_pbr_less_one_companies
+from pbr_data import get_pbr_less_one_companies
+from stock_data import get_stock_data, extract_and_save_listing_shares_and_names, find_latest_csv
 from datetime import datetime
 
 # DART API 키 설정
@@ -13,7 +14,6 @@ corp_list = dart_fss.get_corp_list()
 all_corps = dart_fss.api.filings.get_corp_code()
 df = pd.DataFrame(all_corps)
 df_listed = df[df['stock_code'].notnull()].reset_index(drop=True)
-
 
 # 특정 재무제표 데이터 가져오기
 def get_report(corp_df, corp_name, bsns_year, num, fs_div):
@@ -34,9 +34,8 @@ def get_report(corp_df, corp_name, bsns_year, num, fs_div):
 
     return df
 
-
 # 재무제표 데이터를 분할하여 저장 및 출력
-def split_report(corp_name, bsns_year, num, df):
+def split_report(corp_name, bsns_year, num, df, listing_shares_df):
     items_of_interest = {
         '자산 총액': 'ifrs-full_Assets',
         '부채 총액': 'ifrs-full_Liabilities',
@@ -58,6 +57,9 @@ def split_report(corp_name, bsns_year, num, df):
 
     report_df = pd.DataFrame([report_data])
 
+    # 상장주식수와 조인
+    report_df = report_df.merge(listing_shares_df, on='종목명', how='left')
+
     # 디렉토리 생성
     if not os.path.exists('financialStatements'):
         os.makedirs('financialStatements')
@@ -68,8 +70,7 @@ def split_report(corp_name, bsns_year, num, df):
 
     return report_df
 
-
-def get_financial_statements(trdDd):
+def get_financial_statements(trdDd, listing_shares_df):
     pbr_less_one_df = get_pbr_less_one_companies(trdDd)
 
     # 현재 연도와 과거 3년 포함
@@ -86,15 +87,20 @@ def get_financial_statements(trdDd):
             for quarter in quarters:
                 try:
                     df = get_report(df_listed, corp_name, year.strip(), quarter.strip(), fs_div)
-                    report_df = split_report(corp_name, year.strip(), quarter.strip(), df)
+                    report_df = split_report(corp_name, year.strip(), quarter.strip(), df, listing_shares_df)
                     financial_data.append(report_df)
                 except Exception as e:
                     print(f'{corp_name}의 {year}년 {quarter}분기 데이터 가져오기에 실패했습니다: {e}')
 
     return pd.concat(financial_data, ignore_index=True)
 
-
 if __name__ == "__main__":
-    trdDd = '20240724'
-    financial_statements = get_financial_statements(trdDd)
+    trdDd = '20240726'   #datetime.now().strftime('%Y%m%d')
+
+    # 최근에 생성된 CSV 파일에서 상장주식수와 종목명 컬럼만 추출하여 데이터프레임으로 로드
+    save_dir = 'stock_data'
+    latest_csv_file = find_latest_csv(save_dir)
+    listing_shares_df = pd.read_csv(latest_csv_file, encoding='cp949', usecols=['종목명', '상장주식수'])
+
+    financial_statements = get_financial_statements(trdDd, listing_shares_df)
     print(financial_statements)
