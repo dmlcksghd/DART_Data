@@ -5,33 +5,28 @@ from datetime import datetime, timedelta
 import os
 import holidays
 
-
 def is_holiday(date):
     kr_holidays = holidays.KR(years=date.year)
     return date in kr_holidays
 
-
 def is_last_day_of_month(date):
     next_day = date + timedelta(days=1)
     return next_day.month != date.month
-
 
 def get_recent_weekday(date):
     while date.weekday() > 4 or is_holiday(date) or is_last_day_of_month(date):
         date -= timedelta(days=1)
     return date
 
-
 def determine_file_suffix(original_date, used_date):
     if original_date != used_date:
         if is_last_day_of_month(original_date):
             return '_monthlast'
         elif is_holiday(original_date):
-            return '_weekend'
-        elif original_date.weekday() > 4:
             return '_holiday'
+        elif original_date.weekday() > 4:
+            return '_weekend'
     return ''
-
 
 def get_pbr_less_one_companies(trdDd):
     # 입력된 거래일자 확인
@@ -73,14 +68,14 @@ def get_pbr_less_one_companies(trdDd):
     # 다운로드 요청 헤더
     download_headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020502',
+        'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
         'Accept-Encoding': 'gzip, deflate',
         'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
         'Cache-Control': 'max-age=0',
         'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': '__smVisitorID=5AohOPWW0ba; JSESSIONID=yZCQcKhrcJJOPjvX1kAmTdKqUEdUJKR6JrrsJR3D5jxgBUkTz4fRAJUN2QWtM1rs.bWRjX2RvbWFpbi9tZGNvd2FwMS1tZGNhcHAwMQ==',
+        'Cookie': '_ga=GA1.1.1420298847.1720981646; _ga_EGZWJ6FGKM=GS1.1.1720981858.1.1.1720981880.0.0.0; __smVisitorID=Gp68vON1abl; _ga_1EV6XZXVDT=GS1.1.1720981645.1.1.1720983151.0.0.0; _ga_808R2EHLL3=GS1.1.1720986709.1.1.1720986730.0.0.0; _ga_Z6N0DBVT2W=GS1.1.1721740575.3.0.1721740584.0.0.0; JSESSIONID=WA1BGKSbePUVAyniRc3GX3pV2af01VvNbFFgV9iyZO2il8pOzRNNgadwxkxoEyzN.bWRjX2RvbWFpbi9tZGNvd2FwMS1tZGNhcHAwMQ==',
         'Host': 'data.krx.co.kr',
         'Origin': 'http://data.krx.co.kr',
         'Upgrade-Insecure-Requests': '1'
@@ -106,6 +101,7 @@ def get_pbr_less_one_companies(trdDd):
 
     # 데이터프레임과 사용된 거래일자 반환
     return pbr_less_one_df, adjusted_trdDd
+<<<<<<< HEAD
 
 
 def save_pbr_data(pbr_df, save_dir, trdDd, file_suffix):
@@ -119,7 +115,20 @@ def save_pbr_data(pbr_df, save_dir, trdDd, file_suffix):
     pbr_df.to_csv(csv_file_path, index=False, encoding='utf-8-sig')
 
     return csv_file_path
+=======
+>>>>>>> 790f1bd3b43d2667d0dfa5d308d8bcba97c45fc5
 
+def save_pbr_data(pbr_df, save_dir, trdDd, file_suffix):
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    # CSV 파일명 결정
+    csv_file_path = os.path.join(save_dir, f'pbr_data_{trdDd}{file_suffix}.csv')
+
+    # CSV 파일로 저장
+    pbr_df.to_csv(csv_file_path, index=False, encoding='utf-8-sig')
+
+    return csv_file_path
 
 if __name__ == "__main__":
     # 현재 날짜와 시간으로 trdDd 설정
