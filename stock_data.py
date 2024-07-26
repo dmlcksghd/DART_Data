@@ -72,7 +72,7 @@ def get_stock_data(trdDd):
     with open(csv_file_path, 'wb') as file:
         file.write(csv_response.content)
 
-    # 파일 저장 로그
+    # 로그 출력
     print(f"{trdDd} 파일 저장 완료")
 
     # CSV 데이터를 데이터 프레임으로 읽기
@@ -83,28 +83,23 @@ def get_stock_data(trdDd):
     return stock_df
 
 
-def get_pbr_less_or_equal_stock_data():
+def get_pbr_less_or_equal_stock_data(start_date, end_date):
     stock_data_list = []
 
-    # 현재 연도와 과거 3년 포함
-    current_year = datetime.now().year
-    years = [str(year) for year in range(current_year - 3, current_year + 1)]
-    quarters = ['01', '04', '07', '10']  # 각 분기의 첫 달 선택
+    # 기간 범위 지정
+    date_range = pd.date_range(start=start_date, end=end_date).tolist()
 
-    # 시작 연도와 종료 연도를 기반으로 데이터를 수집
-    for year in years:
-        for quarter in quarters:
-            trdDd = f'{year}{quarter}01'
-            print(f"Downloading data for {trdDd}...")
-            stock_data = get_stock_data(trdDd)
-            stock_data['날짜'] = trdDd
-            stock_data_list.append(stock_data)
+    for single_date in date_range:
+        trdDd = single_date.strftime('%Y%m%d')
+        print(f"Downloading data for {trdDd}...")
+        stock_data = get_stock_data(trdDd)
+        stock_data['날짜'] = trdDd
+        stock_data_list.append(stock_data)
 
-    # 수집한 데이터를 하나의 데이터프레임으로 병합
     all_stock_data = pd.concat(stock_data_list, ignore_index=True)
 
-    # PBR이 1 이하인 기업들의 종목명 가져오기 (최근 날짜 기준)
-    pbr_less_one_df = get_pbr_less_one_companies(datetime.now().strftime('%Y%m%d'))
+    # PBR이 1 이하인 기업들의 종목명 가져오기
+    pbr_less_one_df = get_pbr_less_one_companies(end_date.strftime('%Y%m%d'))
 
     # PBR이 1 이하인 기업들의 주가 데이터 필터링
     pbr_less_or_equal_stock_data = all_stock_data[all_stock_data['종목명'].isin(pbr_less_one_df['종목명'])]
@@ -113,8 +108,12 @@ def get_pbr_less_or_equal_stock_data():
 
 
 if __name__ == "__main__":
+    # 데이터 범위 설정
+    start_date = datetime(2023, 1, 1)
+    end_date = datetime(2024, 3, 31)
+
     # PBR이 1 이하인 기업들의 주가 데이터 가져오기
-    pbr_less_or_equal_stock_data = get_pbr_less_or_equal_stock_data()
+    pbr_less_or_equal_stock_data = get_pbr_less_or_equal_stock_data(start_date, end_date)
 
     # pandas 옵션 설정 (모든 열과 행을 표시하지 않도록 기본 설정 사용)
     pd.set_option('display.max_columns', None)  # 모든 열을 출력하도록 설정
@@ -127,6 +126,5 @@ if __name__ == "__main__":
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    pbr_less_or_equal_stock_data.to_csv(os.path.join(save_dir, 'PBR_Less_Or_Equal_Stock_Data.csv'), index=False,
-                                        encoding='utf-8-sig')
+    pbr_less_or_equal_stock_data.to_csv(os.path.join(save_dir, 'PBR_Less_Or_Equal_Stock_Data.csv'), index=False, encoding='utf-8-sig')
     print("PBR Less Or Equal Stock Data CSV 파일 저장 완료")
