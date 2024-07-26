@@ -2,13 +2,17 @@
 import requests
 import pandas as pd
 from io import StringIO
-from datetime import datetime
+from datetime import datetime, timedelta
 
-trdDd = datetime.now().strftime('%Y%m%d')
+
+
+def get_recent_weekday(date):
+    while date.weekday() >= 5:  # 5: 토요일, 6: 일요일
+        date -= timedelta(days=1)
+    return date
 
 def get_pbr_less_one_companies(trdDd):
     # OTP 생성 URL
-    trdDd = datetime.now().strftime('%Y%m%d')
 
     otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
 
@@ -28,7 +32,7 @@ def get_pbr_less_one_companies(trdDd):
         'filetype': 'csv',
         'url': 'dbms/MDC/STAT/standard/MDCSTAT03501',
         'mktId': 'ALL',       # 전체 시장
-        'trdDd': '20240726',  # 입력된 거래일자 사용
+        'trdDd': f'{trdDd}',  # 입력된 거래일자 사용
         'share': '1',         # 매개변수 (필요시 조정)
         'money': '1',         # 매개변수 (필요시 조정)
         'csvxls_isNo': 'false'
@@ -76,8 +80,11 @@ def get_pbr_less_one_companies(trdDd):
     return pbr_less_one_df
 
 if __name__ == "__main__":
-    trdDd = datetime.now().strftime('%Y%m%d')  # 거래일자 설정
-    pbr_less_one_df = get_pbr_less_one_companies()
+    today = datetime.now()
+    recent_weekday = get_recent_weekday(today)
+    trdDd = recent_weekday.strftime('%Y%m%d')
+
+    pbr_less_one_df = get_pbr_less_one_companies(trdDd)
 
     # 결과 출력
     print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):", pbr_less_one_df)
