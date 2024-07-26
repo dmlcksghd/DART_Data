@@ -5,7 +5,7 @@ from data_PBR import get_pbr_less_one_companies
 from datetime import datetime
 
 # DART API 키 설정
-api_key = ""
+api_key = "016a4403b670e2278235ce4bd28752e47bb33a30"
 dart_fss.set_api_key(api_key=api_key)
 
 # 종목 목록 가져오기
@@ -74,7 +74,7 @@ def get_financial_statements(trdDd):
 
     # 현재 연도와 과거 3년 포함
     current_year = datetime.now().year
-    years = [str(year) for year in range(current_year - 3, current_year + 1)]
+    years = [str(year) for year in range(current_year - 1, current_year + 1)]
 
     quarters = ['1', '2', '3', '4']  # 모든 분기 포함
     fs_div = 'CFS'

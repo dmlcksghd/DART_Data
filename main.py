@@ -1,52 +1,54 @@
 import pandas as pd
+import numpy as np
 from financialStatements import get_financial_statements
 from stock_data import get_pbr_less_or_equal_stock_data
 import os
+import ta
+from datetime import datetime
 
 
-def calculate_bvps(row):
-    return row['자본 총액'] / row['상장주식수']
+def calculate_indicators(df):
+    # 기술적 지표 계산
+    df['ATR'] = ta.volatility.AverageTrueRange(df['고가'], df['저가'], df['종가']).average_true_range()
+    df['Bollinger_High'], df['Bollinger_Low'] = ta.volatility.BollingerBands(
+        df['종가']).bollinger_hband(), ta.volatility.BollingerBands(df['종가']).bollinger_lband()
+    df['MACD'], df['MACD_Signal'], _ = ta.trend.MACD(df['종가']).macd(), ta.trend.MACD(
+        df['종가']).macd_signal(), ta.trend.MACD(df['종가']).macd_diff()
+    return df
 
 
-def predict_stock_price(financial_data, stock_data):
+def prepare_data(start_date, end_date):
+    # 재무제표 데이터 가져오기
+    financial_data = get_financial_statements(end_date)
+
+    # 주가 데이터 가져오기
+    stock_data = get_pbr_less_or_equal_stock_data(start_date, end_date)
+
+    # 기술적 지표 계산
+    stock_data = calculate_indicators(stock_data)
+
     # 데이터 병합
     merged_data = pd.merge(financial_data, stock_data, on='종목명')
 
-    # '자본 총액'과 '상장주식수'를 숫자형으로 변환
-    merged_data['자본 총액'] = pd.to_numeric(merged_data['자본 총액'], errors='coerce')
-    merged_data['상장주식수'] = pd.to_numeric(merged_data['상장주식수'], errors='coerce')
+    # 필요시 추가 데이터 로드 (예: 지수 데이터)
+    # index_data = pd.read_csv('path_to_index_data.csv')
+    # merged_data = pd.merge(merged_data, index_data, on='날짜')
 
-    # 주당 순자산가치(BVPS) 계산
-    merged_data['BVPS'] = merged_data.apply(calculate_bvps, axis=1)
-
-    # 적정 주가 계산 (적정 PBR 값을 1로 가정)
-    merged_data['적정 주가'] = merged_data['BVPS'] * 1  # 적정 PBR 값을 1로 가정
+    # 필수 항목 제외 결측값 처리
+    merged_data.fillna(0, inplace=True)
 
     return merged_data
 
 
 if __name__ == "__main__":
-    trdDd = '20240724'
+    start_date = '20230101'
+    end_date = '20240331'
+    data = prepare_data(start_date, end_date)
+    print(data.head())
 
-    # 재무제표 데이터 가져오기
-    financial_data = get_financial_statements(trdDd)
-    # 주가 데이터 가져오기
-    stock_data = get_pbr_less_or_equal_stock_data(trdDd)
-
-    # 주가 예측
-    result = predict_stock_price(financial_data, stock_data)
-
-    # pandas 옵션 설정
-    pd.set_option('display.max_columns', None)  # 모든 열을 출력하도록 설정
-    pd.set_option('display.max_rows', None)  # 모든 행을 출력하도록 설정
-    pd.set_option('display.max_colwidth', None)  # 각 열의 최대 너비 설정
-
-    # 결과 출력
-    print(result[['종목명', '종가', '적정 주가']])
-
-    # 결과를 CSV 파일로 저장
+    # 데이터를 CSV로 저장하여 training_model.py에서 불러올 수 있도록 합니다.
     save_dir = 'data'
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    result.to_csv(os.path.join(save_dir, 'Predicted_Stock_Prices.csv'), index=False, encoding='utf-8-sig')
+    data.to_csv(os.path.join(save_dir, 'prepared_data.csv'), index=False, encoding='utf-8-sig')

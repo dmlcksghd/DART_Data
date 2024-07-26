@@ -9,6 +9,7 @@ API 키 필요함(DART에서 API 키 받아야함)
 pip install scikit-learn fpdf matplotlib requests beautifulsoup4 pdfplumber dart-fss pandas
 
 pip install scikit-learn
+pip install ta
 pip install fpdf
 pip install matplotlib
 pip install requests
