@@ -1,7 +1,7 @@
 import os
 import dart_fss
 import pandas as pd
-from data_PBR import get_pbr_less_one_companies
+from pbr_data import get_pbr_less_one_companies
 from stock_data import get_stock_data, extract_and_save_listing_shares_and_names, find_latest_csv
 from datetime import datetime
 
@@ -95,12 +95,12 @@ def get_financial_statements(trdDd, listing_shares_df):
     return pd.concat(financial_data, ignore_index=True)
 
 if __name__ == "__main__":
-    trdDd = datetime.now().strftime('%Y%m%d')
+    trdDd = '20240726'   #datetime.now().strftime('%Y%m%d')
 
     # 최근에 생성된 CSV 파일에서 상장주식수와 종목명 컬럼만 추출하여 데이터프레임으로 로드
     save_dir = 'stock_data'
     latest_csv_file = find_latest_csv(save_dir)
-    listing_shares_df = pd.read_csv(latest_csv_file, encoding='utf-8-sig', usecols=['종목명', '상장주식수'])
+    listing_shares_df = pd.read_csv(latest_csv_file, encoding='cp949', usecols=['종목명', '상장주식수'])
 
     financial_statements = get_financial_statements(trdDd, listing_shares_df)
     print(financial_statements)

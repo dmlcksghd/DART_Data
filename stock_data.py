@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 from io import StringIO
-from data_PBR import get_pbr_less_one_companies
+from pbr_data import get_pbr_less_one_companies
 import os
 from datetime import datetime, timedelta
 import holidays
@@ -40,7 +40,7 @@ def get_stock_data(trdDd):
         'filetype': 'csv',
         'url': 'dbms/MDC/STAT/standard/MDCSTAT01501',
         'mktId': 'ALL',
-        'trdDd': trdDd,
+        'trdDd': '20240726',
         'share': '1',
         'money': '1',
         'csvxls_isNo': 'false'
@@ -123,7 +123,7 @@ def find_latest_csv(directory):
 
 # 상장주식수와 종목명 컬럼 추출하여 저장
 def extract_and_save_listing_shares_and_names(latest_file):
-    df = pd.read_csv(latest_file, encoding='euc-kr')
+    df = pd.read_csv(latest_file, encoding='cp949')
     if '상장주식수' in df.columns and '종목명' in df.columns:
         listing_shares_df = df[['종목명', '상장주식수']]
         #output_file = os.path.join('stock_data', 'listing_shares_and_names.csv')
@@ -149,8 +149,8 @@ if __name__ == "__main__":
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    pbr_less_or_equal_stock_data.to_csv(os.path.join(save_dir, 'PBR_Less_Or_Equal_Stock_Data.csv'), index=False, encoding='utf-8-sig')
-    print("PBR Less Or Equal Stock Data CSV 파일 저장 완료")
+    #pbr_less_or_equal_stock_data.to_csv(os.path.join(save_dir, 'PBR_Less_Or_Equal_Stock_Data.csv'), index=False, encoding='utf-8-sig')
+    #print("PBR Less Or Equal Stock Data CSV 파일 저장 완료")
 
     # 가장 최근에 저장된 CSV 파일에서 상장주식수와 종목명 컬럼만 추출하여 저장
     latest_csv_file = find_latest_csv(save_dir)
