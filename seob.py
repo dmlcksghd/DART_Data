@@ -20,10 +20,10 @@ def get_stock_info(trdDd):
 
     # OTP 요청 페이로드
     otp_payload = {
-        'bld': 'dbms/MDC/STAT/standard/MDCSTAT01901',
+        'bld': 'dbms/MDC/STAT/standard/MDCSTAT01501',
         'name': 'fileDown',
         'filetype': 'csv',
-        'url': 'dbms/MDC/STAT/standard/MDCSTAT01901',
+        'url': 'dbms/MDC/STAT/standard/MDCSTAT01501',
         'mktId': 'ALL',       # 전체 시장
         'trdDd': f'{date}',  # 최근 거래일자 사용
         'share': '1',         # 매개변수 (필요시 조정)
@@ -45,7 +45,7 @@ def get_stock_info(trdDd):
         'Cache-Control': 'max-age=0',
         'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': '__smVisitorID=ZFSnLzEKngB; npPfsHost=127.0.0.1; npPfsPort=14440; JSESSIONID=a08pRVc56k7gM28LTWtBcptbV8TU7WJUp75gfg01RzKCUHDdzwXZeu9UqLkeogob.bWRjX2RvbWFpbi9tZGNvd2FwMS1tZGNhcHAwMQ==',
+        'Cookie': '__smVisitorID=ZFSnLzEKngB; npPfsHost=127.0.0.1; npPfsPort=14440; JSESSIONID=M7bFLjV1Uzt0Uk01gKsaqMlkDrTQiQGCbYNDgSTjKy2xbkw0znDd91QgNhPKwCSo.bWRjX2RvbWFpbi9tZGNvd2FwMS1tZGNhcHAwMQ==',
         'Host': 'data.krx.co.kr',
         'Origin': 'http://data.krx.co.kr',
         'Upgrade-Insecure-Requests': '1'
@@ -78,8 +78,8 @@ def get_stock_info(trdDd):
     # PBR 값이 1인 종목의 종목명만 반환
     #return pbr_one_df['종목명'].tolist()
 
-    stock_info_df = stock_info_df[['단축코드','상장일','시장구분','소속부','주식종류','상장주식수']]
-    stock_info_df.columns = ['종목코드','상장일','시장구분','소속부','주식종류','발행주식수']
+    stock_info_df = stock_info_df[['종목코드','시장구분','소속부','시가','고가','저가','거래량','거래대금','시가총액','상장주식수']]
+    #stock_info_df.columns = ['종목코드','상장일','시장구분','소속부','주식종류','발행주식수']
     return stock_info_df
     ####################################################
 
@@ -103,7 +103,7 @@ def get_pbr_one_companies(trdDd):
         'filetype': 'csv',
         'url': 'dbms/MDC/STAT/standard/MDCSTAT03501',
         'mktId': 'ALL',       # 전체 시장
-        'trdDd': '20240724',  # 최근 거래일자 사용
+        'trdDd': f'{date}',  # 최근 거래일자 사용
         'share': '1',         # 매개변수 (필요시 조정)
         'money': '1',         # 매개변수 (필요시 조정)
         'csvxls_isNo': 'false'
@@ -183,8 +183,9 @@ if __name__ == "__main__":
 
     get_join_pbr_less_df = get_join_df(stock_info_df, pbr_less_df)
 
-    print(get_join_pbr_1_df)
-    print(get_join_pbr_less_df)
+    #print(get_join_pbr_1_df)
+    #print(get_join_pbr_less_df)
+    print(stock_info_df)
     
 
     
