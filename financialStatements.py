@@ -1,9 +1,10 @@
+import os
 import dart_fss
 import pandas as pd
-import os
+from data_PBR import get_pbr_one_companies
 
 # DART API 키 설정
-api_key = ""
+api_key = "016a4403b670e2278235ce4bd28752e47bb33a30"
 dart_fss.set_api_key(api_key=api_key)
 
 # 종목 목록 가져오기
@@ -51,7 +52,7 @@ def split_report(corp_name, bsns_year, num, df):
         '현금 흐름': 'ifrs-full_CashFlowsFromUsedInOperatingActivities'
     }
 
-    report_data = {}
+    report_data = {'종목명': corp_name}
 
     for item_name, item_code in items_of_interest.items():
         filtered_df = df[df['account_id'] == item_code]
@@ -63,30 +64,29 @@ def split_report(corp_name, bsns_year, num, df):
     report_df = pd.DataFrame([report_data])
 
     # 디렉토리 생성
-    directory = 'financial_reports'
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    if not os.path.exists('financialStatements'):
+        os.makedirs('financialStatements')
 
-    file_name = os.path.join(directory, f'{corp_name}_{bsns_year}_{num}Q_report.csv')
+    file_name = os.path.join('financialStatements', f'{corp_name}_{bsns_year}_{num}Q_report.csv')
     report_df.to_csv(file_name, index=False, encoding='utf-8-sig')
     print(f'{file_name} 파일로 저장되었습니다.')
 
     return report_df
 
+if __name__ == "__main__":
+    trdDd = '20240724'  # 거래일자 설정
+    pbr_one_list, pbr_less_one_df = get_pbr_one_companies(trdDd)
 
-'''
-# 사용자 입력 받기
-corp_name = input("종목명을 입력하세요: ")
-years = input("조회할 연도들을 입력하세요 (콤마로 구분, 예: 2022,2023,2024): ").split(',')
-quarters = input("조회할 분기들을 입력하세요 (콤마로 구분, 예: 1,2,3,4): ").split(',')
-fs_div = 'CFS'  # 연결재무제표
+    years = ['2024']  # 조회할 연도들
+    quarters = ['1']  # 조회할 분기들
+    fs_div = 'CFS'  # 연결재무제표
 
-for year in years:
-    for quarter in quarters:
-        try:
-            print(f'{corp_name}의 {year}년 {quarter}분기 데이터를 가져오는 중...')
-            df = get_report(df_listed, corp_name, year.strip(), quarter.strip(), fs_div)
-            report_df = split_report(corp_name, year.strip(), quarter.strip(), df)
-        except Exception as e:
-            print(f'{corp_name}의 {year}년 {quarter}분기 데이터 가져오기에 실패했습니다: {e}')
-            '''
+    for corp_name in pbr_less_one_df['종목명'].tolist():
+        for year in years:
+            for quarter in quarters:
+                try:
+                    print(f'{corp_name}의 {year}년 {quarter}분기 데이터를 가져오는 중...')
+                    df = get_report(df_listed, corp_name, year.strip(), quarter.strip(), fs_div)
+                    report_df = split_report(corp_name, year.strip(), quarter.strip(), df)
+                except Exception as e:
+                    print(f'{corp_name}의 {year}년 {quarter}분기 데이터 가져오기에 실패했습니다: {e}')
