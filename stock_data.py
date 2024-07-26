@@ -72,6 +72,9 @@ def get_stock_data(trdDd):
     with open(csv_file_path, 'wb') as file:
         file.write(csv_response.content)
 
+    # 파일 저장 로그
+    print(f"{trdDd} 파일 저장 완료")
+
     # CSV 데이터를 데이터 프레임으로 읽기
     csv_content = csv_response.content.decode('euc-kr')  # 한글 인코딩 처리
     data = StringIO(csv_content)
@@ -92,6 +95,7 @@ def get_pbr_less_or_equal_stock_data():
     for year in years:
         for quarter in quarters:
             trdDd = f'{year}{quarter}01'
+            print(f"Downloading data for {trdDd}...")
             stock_data = get_stock_data(trdDd)
             stock_data['날짜'] = trdDd
             stock_data_list.append(stock_data)
@@ -125,3 +129,4 @@ if __name__ == "__main__":
 
     pbr_less_or_equal_stock_data.to_csv(os.path.join(save_dir, 'PBR_Less_Or_Equal_Stock_Data.csv'), index=False,
                                         encoding='utf-8-sig')
+    print("PBR Less Or Equal Stock Data CSV 파일 저장 완료")
