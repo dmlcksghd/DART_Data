@@ -5,20 +5,42 @@ from datetime import datetime, timedelta
 import os
 import holidays
 
+
 def is_holiday(date):
     kr_holidays = holidays.KR(years=date.year)
     return date in kr_holidays
 
+
 def is_last_day_of_month(date):
     next_day = date + timedelta(days=1)
     return next_day.month != date.month
+
 
 def get_recent_weekday(date):
     while date.weekday() > 4 or is_holiday(date) or is_last_day_of_month(date):
         date -= timedelta(days=1)
     return date
 
+
+def determine_file_suffix(original_date, used_date):
+    if original_date != used_date:
+        if is_last_day_of_month(original_date):
+            return '_monthlast'
+        elif is_holiday(original_date):
+            return '_weekend'
+        elif original_date.weekday() > 4:
+            return '_holiday'
+    return ''
+
+
 def get_pbr_less_one_companies(trdDd):
+    # 입력된 거래일자 확인
+    input_date = datetime.strptime(trdDd, '%Y%m%d')
+
+    # 필요한 경우 최근 평일로 조정
+    recent_weekday = get_recent_weekday(input_date)
+    adjusted_trdDd = recent_weekday.strftime('%Y%m%d')
+
     # OTP 생성 URL
     otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
 
@@ -38,7 +60,7 @@ def get_pbr_less_one_companies(trdDd):
         'filetype': 'csv',
         'url': 'dbms/MDC/STAT/standard/MDCSTAT03501',
         'mktId': 'ALL',  # 전체 시장
-        'trdDd': trdDd,  # 입력된 거래일자 사용
+        'trdDd': adjusted_trdDd,  # 조정된 거래일자 사용
         'share': '1',  # 매개변수 (필요시 조정)
         'money': '1',  # 매개변수 (필요시 조정)
         'csvxls_isNo': 'false'
@@ -82,8 +104,22 @@ def get_pbr_less_one_companies(trdDd):
     # PBR 값이 1보다 작은 종목 찾기
     pbr_less_one_df = df[df['PBR'] < 1].sort_values(by='PBR', ascending=True).head(100)
 
-    # 데이터프레임 반환
-    return pbr_less_one_df
+    # 데이터프레임과 사용된 거래일자 반환
+    return pbr_less_one_df, adjusted_trdDd
+
+
+def save_pbr_data(pbr_df, save_dir, trdDd, file_suffix):
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    # CSV 파일명 결정
+    csv_file_path = os.path.join(save_dir, f'pbr_data_{trdDd}{file_suffix}.csv')
+
+    # CSV 파일로 저장
+    pbr_df.to_csv(csv_file_path, index=False, encoding='utf-8-sig')
+
+    return csv_file_path
+
 
 if __name__ == "__main__":
     # 현재 날짜와 시간으로 trdDd 설정
@@ -93,36 +129,19 @@ if __name__ == "__main__":
     # 현재 날짜와 시간 기록
     request_time = today.strftime('%Y-%m-%d %H:%M:%S')
 
-    # 주말, 공휴일, 월 마지막 날 확인 후 최근 평일로 조정
-    date_to_use = get_recent_weekday(today)
-    trdDd = date_to_use.strftime('%Y%m%d')
-
-    pbr_less_one_df = get_pbr_less_one_companies(trdDd)
+    # PBR 데이터 가져오기 (조정된 거래일자 포함)
+    pbr_less_one_df, adjusted_trdDd = get_pbr_less_one_companies(trdDd)
 
     # 결과 출력
     print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):")
     print(pbr_less_one_df)
 
-    # 저장 디렉토리 설정
+    # 파일명 접미사 결정
+    file_suffix = determine_file_suffix(today, datetime.strptime(adjusted_trdDd, '%Y%m%d'))
+
+    # 데이터 저장 디렉토리 설정
     save_dir = 'pbr_data'
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
-    # CSV 파일명 결정 (우선순위: 월 마지막 날 > 공휴일 > 주말)
-    file_suffix = ''
-    if today != date_to_use:
-        if is_last_day_of_month(today):
-            file_suffix = '_monthlast'
-        elif today.weekday() > 4:
-            file_suffix = '_weekend'
-        elif is_holiday(today):
-            file_suffix = '_holiday'
-
-
-    csv_file_path = os.path.join(save_dir, f'pbr_data_{trdDd}{file_suffix}.csv')
-
-    # CSV 파일로 저장
-    pbr_less_one_df.to_csv(csv_file_path, index=False, encoding='utf-8-sig')
+    csv_file_path = save_pbr_data(pbr_less_one_df, save_dir, adjusted_trdDd, file_suffix)
 
     # 요청 시간과 저장 경로 출력
     print(f"데이터 요청 시간: {request_time}")
