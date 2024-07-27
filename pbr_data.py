@@ -27,7 +27,10 @@ def determine_file_suffix(original_date, used_date):
 
 def get_pbr_less_one_companies(trdDd):
     # 입력된 거래일자 확인
-    input_date = datetime.strptime(trdDd, '%Y%m%d')
+    if isinstance(trdDd, str):
+        input_date = datetime.strptime(trdDd, '%Y%m%d')  # 문자열을 datetime 객체로 변환
+    else:
+        input_date = trdDd
 
     # 필요한 경우 최근 평일로 조정
     recent_weekday = get_recent_weekday(input_date)
@@ -127,7 +130,8 @@ if __name__ == "__main__":
     print(pbr_less_one_df)
 
     # 파일명 접미사 결정
-    file_suffix = determine_file_suffix(today, datetime.strptime(adjusted_trdDd, '%Y%m%d'))
+    adjusted_trdDd_date = datetime.strptime(adjusted_trdDd, '%Y%m%d')
+    file_suffix = determine_file_suffix(today, adjusted_trdDd_date)
 
     # 데이터 저장 디렉토리 설정
     save_dir = 'pbr_data'
