@@ -24,6 +24,10 @@ if __name__ == "__main__":
     start_date = '20230101'
     end_date = '20240331'
 
+    # 문자열을 datetime 객체로 변환
+    start_date = datetime.strptime(start_date, '%Y%m%d')
+    end_date = datetime.strptime(end_date, '%Y%m%d')
+
     # 최근에 생성된 CSV 파일에서 상장주식수와 종목명 컬럼만 추출하여 데이터프레임으로 로드
     save_dir = 'stock_data'
     latest_csv_file = find_latest_csv(save_dir)
