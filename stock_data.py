@@ -90,10 +90,10 @@ def get_stock_data(trdDd):
 
 def get_pbr_less_or_equal_stock_data(start_date, end_date):
     stock_data_list = []
-    
+
     # 마지막 거래일 제외
     last_trading_days = [get_last_trading_day_of_year(year) for year in range(start_date.year, end_date.year + 1)]
-    last_trading_days = set(last_trading_days)  # 중복 제거
+    last_trading_days = set(last_trading_days)
 
     date_range = pd.date_range(start=start_date, end=end_date)
     for single_date in date_range:
@@ -109,7 +109,7 @@ def get_pbr_less_or_equal_stock_data(start_date, end_date):
 
     all_stock_data = pd.concat(stock_data_list, ignore_index=True)
 
-    pbr_less_one_df = get_pbr_less_one_companies(end_date.strftime('%Y%m%d'))
+    pbr_less_one_df, _ = get_pbr_less_one_companies(end_date.strftime('%Y%m%d'))
 
     pbr_less_or_equal_stock_data = all_stock_data[all_stock_data['종목명'].isin(pbr_less_one_df['종목명'])]
 
