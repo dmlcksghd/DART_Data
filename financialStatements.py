@@ -104,7 +104,10 @@ def split_report(corp_name, bsns_year, num, df):
         report_df['영업이익률'] = None
 
     if report_df['순이익'].iloc[0] and report_df['매출액'].iloc[0]:
-        report_df['순이익률'] = (float(report_df['순이익'].iloc[0]) / float(report_df['매출액'].iloc[0])) * 100
+        if float(report_df['매출액'].iloc[0]) != 0:
+            report_df['순이익률'] = (float(report_df['순이익'].iloc[0]) / float(report_df['매출액'].iloc[0])) * 100
+        else:
+            report_df['순이익률'] = None
     else:
         report_df['순이익률'] = None
 
