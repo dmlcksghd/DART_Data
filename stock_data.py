@@ -1,14 +1,15 @@
 import requests
 import pandas as pd
 from io import StringIO
-from pbr_data import get_pbr_less_one_companies
+from pbr_data import get_pbr_less_one_companies, is_holiday, is_last_day_of_month, get_recent_weekday
 import os
 from datetime import datetime, timedelta
 import holidays
-import numpy as np
+import time
 
 # 한국 공휴일 데이터 로드 (korean-holidays 라이브러리 사용)
 kr_holidays = holidays.KR(years=[2023, 2024])  # 공휴일 범위 설정
+
 
 def is_trading_day(date):
     """ 주말과 공휴일을 제외한 거래일 확인 """
@@ -18,20 +19,14 @@ def is_trading_day(date):
         return False
     return True
 
-def get_last_trading_day_of_year(year):
-    """ 해당 연도의 마지막 거래일 찾기 """
-    last_day = datetime(year, 12, 31)
-    while not is_trading_day(last_day):
-        last_day -= timedelta(days=1)
-    return last_day
 
-def get_stock_data(trdDd):
+def get_stock_data(trdDd, retries=3, backoff_factor=1.0):
     otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
     download_url = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd'
 
     otp_headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=EUC-KR',
     }
 
     otp_payload = {
@@ -40,14 +35,11 @@ def get_stock_data(trdDd):
         'filetype': 'csv',
         'url': 'dbms/MDC/STAT/standard/MDCSTAT01501',
         'mktId': 'ALL',
-        'trdDd': '20240726',
+        'trdDd': trdDd,
         'share': '1',
         'money': '1',
         'csvxls_isNo': 'false'
     }
-
-    otp_response = requests.post(otp_url, headers=otp_headers, data=otp_payload)
-    otp = otp_response.text
 
     download_headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -65,93 +57,82 @@ def get_stock_data(trdDd):
     }
 
     download_payload = {
-        'code': otp,
+        'code': '',
         'name': 'fileDown',
         'filetype': 'csv'
     }
 
-    csv_response = requests.post(download_url, headers=download_headers, data=download_payload)
+    with requests.Session() as session:
+        for attempt in range(retries):
+            try:
+                otp_response = session.post(otp_url, headers=otp_headers, data=otp_payload)
+                otp_response.raise_for_status()
+                download_payload['code'] = otp_response.text
 
-    save_dir = 'stock_data'
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+                csv_response = session.post(download_url, headers=download_headers, data=download_payload)
+                csv_response.raise_for_status()  # Raise HTTPError for bad responses (4xx and 5xx)
 
-    csv_file_path = os.path.join(save_dir, f'stock_data_{trdDd}.csv')
-    with open(csv_file_path, 'wb') as file:
-        file.write(csv_response.content)
+                csv_content = csv_response.content.decode('euc-kr')
+                data = StringIO(csv_content)
+                stock_df = pd.read_csv(data)
 
-    print(f"{trdDd} 파일 저장 완료")
+                return stock_df
+            except (requests.RequestException, requests.exceptions.ChunkedEncodingError) as e:
+                if attempt < retries - 1:
+                    time.sleep(backoff_factor * (2 ** attempt))  # Exponential backoff
+                else:
+                    raise e
 
-    csv_content = csv_response.content.decode('euc-kr')
-    data = StringIO(csv_content)
-    stock_df = pd.read_csv(data)
 
-    return stock_df
-
-def get_pbr_less_or_equal_stock_data(start_date, end_date):
+def get_filtered_stock_data(start_date, end_date, pbr_stocks):
     stock_data_list = []
-
-    # 마지막 거래일 제외
-    last_trading_days = [get_last_trading_day_of_year(year) for year in range(start_date.year, end_date.year + 1)]
-    last_trading_days = set(last_trading_days)
 
     date_range = pd.date_range(start=start_date, end=end_date)
     for single_date in date_range:
-        if single_date not in last_trading_days and is_trading_day(single_date):  # 거래일인 경우만 데이터 다운로드
-            trdDd = single_date.strftime('%Y%m%d')
-            print(f"Downloading data for {trdDd}...")
-            stock_data = get_stock_data(trdDd)
-            stock_data['날짜'] = trdDd
-            stock_data_list.append(stock_data)
+        if not is_trading_day(single_date):
+            continue  # Skip holidays and weekends
+
+        trdDd = single_date.strftime('%Y%m%d')
+        print(f"Downloading data for {trdDd}...")
+        stock_data = get_stock_data(trdDd)
+        filtered_stock_data = stock_data[stock_data['종목명'].isin(pbr_stocks['종목명'])].copy()
+        filtered_stock_data.loc[:, '날짜'] = trdDd
+        stock_data_list.append(filtered_stock_data)
 
     if not stock_data_list:
         raise ValueError("No trading days found in the given range.")
 
-    all_stock_data = pd.concat(stock_data_list, ignore_index=True)
+    all_filtered_stock_data = pd.concat(stock_data_list, ignore_index=True)
 
-    pbr_less_one_df, _ = get_pbr_less_one_companies(end_date.strftime('%Y%m%d'))
+    return all_filtered_stock_data
 
-    pbr_less_or_equal_stock_data = all_stock_data[all_stock_data['종목명'].isin(pbr_less_one_df['종목명'])]
 
-    return pbr_less_or_equal_stock_data
+def save_individual_stock_files(final_data, save_dir):
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
-# 최근에 생성된 CSV 파일 찾기
-def find_latest_csv(directory):
-    csv_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
-    latest_file = max(csv_files, key=lambda x: os.path.getctime(os.path.join(directory, x)))
-    return os.path.join(directory, latest_file)
+    grouped = final_data.groupby('종목명')
+    for stock_name, group in grouped:
+        group.to_csv(os.path.join(save_dir, f'{stock_name}.csv'), index=False, encoding='utf-8-sig')
 
-# 상장주식수와 종목명 컬럼 추출하여 저장
-def extract_and_save_listing_shares_and_names(latest_file):
-    df = pd.read_csv(latest_file, encoding='cp949')
-    if '상장주식수' in df.columns and '종목명' in df.columns:
-        listing_shares_df = df[['종목명', '상장주식수']]
-        #output_file = os.path.join('stock_data', 'listing_shares_and_names.csv')
-        #listing_shares_df.to_csv(output_file, index=False, encoding='utf-8-sig')
-        #print(f'{output_file} 파일로 저장되었습니다.')
-    else:
-        missing_cols = [col for col in ['종목명', '상장주식수'] if col not in df.columns]
-        print(f'다음 컬럼이 존재하지 않습니다: {", ".join(missing_cols)}')
-
-    return listing_shares_df
 
 if __name__ == "__main__":
     start_date = datetime(2023, 1, 1)
     end_date = datetime(2024, 3, 31)
 
-    pbr_less_or_equal_stock_data = get_pbr_less_or_equal_stock_data(start_date, end_date)
+    # PBR 데이터에서 종목명과 PBR 값을 가져오기
+    pbr_data, _ = get_pbr_less_one_companies(end_date.strftime('%Y%m%d'))
 
-    pd.set_option('display.max_columns', None)
+    all_filtered_stock_data = get_filtered_stock_data(start_date, end_date, pbr_data)
 
-    print(pbr_less_or_equal_stock_data.head())
+    # PBR 데이터를 종목명 기준으로 주가 데이터와 병합
+    final_data = pd.merge(all_filtered_stock_data, pbr_data[['종목명', 'PBR']], on='종목명')
 
+    # 필요한 컬럼만 추출
+    columns_needed = ['날짜', '종목명', 'PBR', '시가', '고가', '저가', '종가', '거래량', '상장주식수']
+    final_filtered_data = final_data[columns_needed]
+
+    # 개별 종목별로 CSV 파일 저장
     save_dir = 'stock_data'
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
-    #pbr_less_or_equal_stock_data.to_csv(os.path.join(save_dir, 'PBR_Less_Or_Equal_Stock_Data.csv'), index=False, encoding='utf-8-sig')
-    #print("PBR Less Or Equal Stock Data CSV 파일 저장 완료")
-
-    # 가장 최근에 저장된 CSV 파일에서 상장주식수와 종목명 컬럼만 추출하여 저장
-    latest_csv_file = find_latest_csv(save_dir)
-    extract_and_save_listing_shares_and_names(latest_csv_file)
+    save_individual_stock_files(final_filtered_data, save_dir)
+    print("Individual Stock Data CSV 파일 저장 완료")

@@ -1,44 +1,102 @@
-import pandas as pd
-import numpy as np
-from financialStatements import get_financial_statements
-from stock_data import get_pbr_less_or_equal_stock_data, find_latest_csv
 import os
+import pandas as pd
+import chardet
 from datetime import datetime
 
-def prepare_data(start_date, end_date, listing_shares_df):
-    # 재무제표 데이터 가져오기
-    financial_data = get_financial_statements(end_date, listing_shares_df)
+# 디렉토리 설정
+stock_dir = 'stock_data'
+financial_dir = 'financialStatements'
+save_dir = 'data'
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
 
-    # 주가 데이터 가져오기
-    stock_data = get_pbr_less_or_equal_stock_data(start_date, end_date)
+def detect_encoding(file_path):
+    try:
+        with open(file_path, 'rb') as f:
+            result = chardet.detect(f.read())
+        return result['encoding']
+    except Exception as e:
+        print(f"Error detecting encoding for {file_path}: {e}")
+        return 'utf-8'  # Default encoding if detection fails
 
-    # 데이터 병합
-    merged_data = pd.merge(financial_data, stock_data, on='종목명')
+def load_csv_files_from_directory(directory, encoding=None):
+    dataframes = []
+    for filename in os.listdir(directory):
+        if filename.endswith('.csv'):
+            file_path = os.path.join(directory, filename)
+            if encoding is None:
+                encoding = detect_encoding(file_path)
+            try:
+                df = pd.read_csv(file_path, encoding=encoding)
+                dataframes.append(df)
+            except Exception as e:
+                print(f"Error reading {file_path} with encoding {encoding}: {e}")
+    if dataframes:
+        return pd.concat(dataframes, ignore_index=True)
+    return pd.DataFrame()
 
-    # 필수 항목 제외 결측값 처리
-    merged_data.fillna(0, inplace=True)
+def process_stock_data(stock_df):
+    # 주식 데이터 열 이름 정리 및 선택
+    stock_df.columns = stock_df.columns.str.strip()
+    stock_df = stock_df[
+        ['종목코드', '종목명', '시장구분', '소속부', '종가', '대비', '등락률', '시가', '고가', '저가', '거래량', '거래대금', '시가총액', '상장주식수']]
+    stock_df = stock_df.rename(columns={'상장주식수': '상장주식수_x'})
+    return stock_df
 
-    return merged_data
+def process_financial_data(financial_df):
+    # 열 이름을 확인
+    print("Available columns in financial_df:", financial_df.columns.tolist())
+
+    # 재무제표 데이터 열 이름 정리 및 선택
+    financial_df.columns = financial_df.columns.str.strip()
+
+    financial_df = financial_df.rename(columns={
+        '자산 총액': 'Total Assets',
+        '부채 총액': 'Total Liabilities',
+        '자본 총액': 'Total Equity',
+        '매출액': 'Revenue',
+        '영업이익': 'Operating Income',
+        '순이익': 'Net Income',
+        '상장주식수': 'Shares Outstanding_y',  # 수정된 부분
+        'ROE': 'ROE',
+        'EPS': 'EPS',
+        'BPS': 'BPS',
+        '부채비율': 'Debt Ratio',
+        '영업이익률': 'Operating Margin',
+        '순이익률': 'Net Margin',
+        '분기': 'Quarter',
+        '현금 흐름': 'Cash Flow'
+    })
+
+    # 필요한 열만 선택
+    try:
+        financial_df = financial_df[['종목명', 'Quarter', 'Total Assets', 'Total Liabilities', 'Total Equity', 'Revenue',
+                                     'Operating Income', 'Net Income', 'Cash Flow', 'Shares Outstanding_y', 'ROE', 'EPS',
+                                     'BPS', 'Debt Ratio', 'Operating Margin', 'Net Margin']]
+    except KeyError as e:
+        print(f"Column error: {e}")
+        print("Available columns in financial_df after renaming:", financial_df.columns.tolist())
+
+    return financial_df
 
 if __name__ == "__main__":
-    start_date = '20230101'
-    end_date = '20240331'
+    today = datetime.now()
+    recent_weekday = today - pd.DateOffset(weekday=(today.weekday() - 0) % 7)
+    trdDd = recent_weekday.strftime('%Y%m%d')
 
-    # 문자열을 datetime 객체로 변환
-    start_date = datetime.strptime(start_date, '%Y%m%d')
-    end_date = datetime.strptime(end_date, '%Y%m%d')
+    # 주식 데이터와 재무제표 데이터 로드
+    stock_df = load_csv_files_from_directory(stock_dir, encoding='euc-kr')
+    financial_df = load_csv_files_from_directory(financial_dir)
 
-    # 최근에 생성된 CSV 파일에서 상장주식수와 종목명 컬럼만 추출하여 데이터프레임으로 로드
-    save_dir = 'stock_data'
-    latest_csv_file = find_latest_csv(save_dir)
-    listing_shares_df = pd.read_csv(latest_csv_file, encoding='cp949', usecols=['종목명', '상장주식수'])
+    # 데이터 처리
+    stock_df = process_stock_data(stock_df)
+    financial_df = process_financial_data(financial_df)
 
-    data = prepare_data(start_date, end_date, listing_shares_df)
-    print(data.head())
+    # 데이터 결합 (종목명과 분기, 날짜 기준)
+    prepared_data = pd.merge(stock_df, financial_df, how='left', on='종목명')
 
-    # 데이터를 CSV로 저장하여 training_model.py에서 불러올 수 있도록 합니다.
-    save_dir = 'data'
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
-    data.to_csv(os.path.join(save_dir, 'prepared_data.csv'), index=False, encoding='utf-8-sig')
+    # 파일 이름에 날짜와 시간 포함
+    timestamp = today.strftime('%Y%m%d_%H%M%S')
+    prepared_data_file_path = os.path.join(save_dir, f'prepared_data_{timestamp}.csv')
+    prepared_data.to_csv(prepared_data_file_path, index=False, encoding='euc-kr')
+    print(f"Prepared data saved to {prepared_data_file_path}")

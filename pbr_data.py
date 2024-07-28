@@ -9,22 +9,19 @@ def is_holiday(date):
     kr_holidays = holidays.KR(years=date.year)
     return date in kr_holidays
 
-def is_last_day_of_month(date):
-    next_day = date + timedelta(days=1)
-    return next_day.month != date.month
+def is_weekend(date):
+    return date.weekday() >= 5  # 토요일(5) 또는 일요일(6)
 
 def get_recent_weekday(date):
-    while date.weekday() > 4 or is_holiday(date) or is_last_day_of_month(date):
+    while is_weekend(date) or is_holiday(date):
         date -= timedelta(days=1)
     return date
 
 def determine_file_suffix(original_date, used_date):
     if original_date != used_date:
-        if is_last_day_of_month(original_date):
-            return '_monthlast'
-        elif is_holiday(original_date):
+        if is_holiday(original_date):
             return '_holiday'
-        elif original_date.weekday() > 4:
+        elif is_weekend(original_date):
             return '_weekend'
     return ''
 
@@ -101,6 +98,9 @@ def get_pbr_less_one_companies(trdDd):
 
     # PBR 값이 1보다 작은 종목 찾기
     pbr_less_one_df = df[df['PBR'] < 1].sort_values(by='PBR', ascending=True).head(100)
+
+    # 필요한 컬럼만 선택
+    pbr_less_one_df = pbr_less_one_df[['종목명', 'PBR']]
 
     # 데이터프레임과 사용된 거래일자 반환
     return pbr_less_one_df, adjusted_trdDd

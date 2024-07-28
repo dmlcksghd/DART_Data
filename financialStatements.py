@@ -133,4 +133,4 @@ if __name__ == "__main__":
     trdDd = recent_weekday.strftime('%Y%m%d')
 
     financial_statements = get_financial_statements(trdDd)
-    print(financial_statements)
+    print(financial_statements
