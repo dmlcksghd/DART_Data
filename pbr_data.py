@@ -9,6 +9,10 @@ def is_holiday(date):
     kr_holidays = holidays.KR(years=date.year)
     return date in kr_holidays
 
+def is_last_day_of_month(date):
+    next_day = date + timedelta(days=1)
+    return next_day.month != date.month
+
 def is_weekend(date):
     return date.weekday() >= 5  # 토요일(5) 또는 일요일(6)
 
