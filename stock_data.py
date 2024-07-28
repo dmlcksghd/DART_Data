@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 from io import StringIO
-from pbr_data import get_pbr_less_one_companies, is_holiday, is_last_day_of_month, get_recent_weekday
+from pbr_data import get_pbr_less_one_companies, is_holiday, get_recent_weekday
 import os
 from datetime import datetime, timedelta
 import holidays
