@@ -99,6 +99,9 @@ def get_pbr_less_one_companies(trdDd):
     # PBR 값이 1보다 작은 종목 찾기
     pbr_less_one_df = df[df['PBR'] < 1].sort_values(by='PBR', ascending=True).head(100)
 
+    # 필요한 컬럼만 선택
+    pbr_less_one_df = pbr_less_one_df[['종목명', 'PBR']]
+
     # 데이터프레임과 사용된 거래일자 반환
     return pbr_less_one_df, adjusted_trdDd
 
