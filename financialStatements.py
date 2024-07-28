@@ -29,7 +29,6 @@ def get_report(corp_df, corp_name, bsns_year, num, fs_div):
         print(f"Error: {corp_name}의 기업 코드를 찾을 수 없습니다.")
         return pd.DataFrame()
 
-    print(f'기업 코드: {corp_code}')  # 디버깅용 출력
     bsns_year = str(bsns_year)
 
     if num == '4':
@@ -67,7 +66,6 @@ def split_report(corp_name, bsns_year, num, df):
     report_data = {
         '종목명': corp_name,
         '연도': bsns_year,
-        '분기': num
     }
 
     for item_name, item_code in items_of_interest.items():
