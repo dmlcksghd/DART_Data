@@ -9,10 +9,6 @@ def is_holiday(date):
     kr_holidays = holidays.KR(years=date.year)
     return date in kr_holidays
 
-def is_last_day_of_month(date):
-    next_day = date + timedelta(days=1)
-    return next_day.month != date.month
-
 def is_weekend(date):
     return date.weekday() >= 5  # 토요일(5) 또는 일요일(6)
 
@@ -101,7 +97,7 @@ def get_pbr_less_one_companies(trdDd):
     df = pd.read_csv(data)
 
     # PBR 값이 1보다 작은 종목 찾기
-    pbr_less_one_df = df[df['PBR'] < 1].sort_values(by='PBR', ascending=True).head(100)
+    pbr_less_one_df = df[df['PBR'] < 1].sort_values(by='PBR', ascending=True).head(10)
 
     # 필요한 컬럼만 선택
     pbr_less_one_df = pbr_less_one_df[['종목명', 'PBR']]
@@ -109,17 +105,17 @@ def get_pbr_less_one_companies(trdDd):
     # 데이터프레임과 사용된 거래일자 반환
     return pbr_less_one_df, adjusted_trdDd
 
-def save_pbr_data(pbr_df, save_dir, trdDd, file_suffix):
+def save_individual_pbr_data(pbr_df, save_dir, trdDd, file_suffix):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    # CSV 파일명 결정
-    csv_file_path = os.path.join(save_dir, f'pbr_data_{trdDd}{file_suffix}.csv')
+    for index, row in pbr_df.iterrows():
+        stock_name = row['종목명']
+        file_path = os.path.join(save_dir, f'{stock_name}_{trdDd}{file_suffix}.csv')
+        row_df = row.to_frame().T
+        row_df.to_csv(file_path, index=False, encoding='utf-8-sig')
 
-    # CSV 파일로 저장
-    pbr_df.to_csv(csv_file_path, index=False, encoding='utf-8-sig')
-
-    return csv_file_path
+    return save_dir
 
 if __name__ == "__main__":
     # 현재 날짜와 시간으로 trdDd 설정
@@ -133,7 +129,7 @@ if __name__ == "__main__":
     pbr_less_one_df, adjusted_trdDd = get_pbr_less_one_companies(trdDd)
 
     # 결과 출력
-    print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 100개):")
+    print("PBR 값이 1보다 작은 종목과 PBR 값 (상위 10개):")
     print(pbr_less_one_df)
 
     # 파일명 접미사 결정
@@ -142,8 +138,8 @@ if __name__ == "__main__":
 
     # 데이터 저장 디렉토리 설정
     save_dir = 'pbr_data'
-    csv_file_path = save_pbr_data(pbr_less_one_df, save_dir, adjusted_trdDd, file_suffix)
+    save_individual_pbr_data(pbr_less_one_df, save_dir, adjusted_trdDd, file_suffix)
 
     # 요청 시간과 저장 경로 출력
     print(f"데이터 요청 시간: {request_time}")
-    print(f"PBR 데이터가 {csv_file_path}에 저장되었습니다.")
+    print(f"PBR 데이터가 {save_dir}에 개별 파일로 저장되었습니다.")

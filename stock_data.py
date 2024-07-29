@@ -1,32 +1,36 @@
 import requests
 import pandas as pd
 from io import StringIO
-from pbr_data import get_pbr_less_one_companies, is_holiday, is_last_day_of_month, get_recent_weekday
-import os
 from datetime import datetime, timedelta
+import os
 import holidays
 import time
 
-# 한국 공휴일 데이터 로드 (korean-holidays 라이브러리 사용)
-kr_holidays = holidays.KR(years=[2023, 2024])  # 공휴일 범위 설정
+def is_holiday(date):
+    kr_holidays = holidays.KR(years=date.year)
+    return date in kr_holidays
 
+def get_recent_weekday(date):
+    while date.weekday() > 4 or is_holiday(date):
+        date -= timedelta(days=1)
+    return date
 
-def is_trading_day(date):
-    """ 주말과 공휴일을 제외한 거래일 확인 """
-    if date.weekday() >= 5:  # 토요일(5)과 일요일(6)은 거래일이 아님
-        return False
-    if date in kr_holidays:
-        return False
-    return True
+def get_business_days(start_date, end_date):
+    business_days = []
+    current_date = start_date
+    while current_date <= end_date:
+        if current_date.weekday() < 5 and not is_holiday(current_date):
+            business_days.append(current_date)
+        current_date += timedelta(days=1)
+    return business_days
 
-
-def get_stock_data(trdDd, retries=3, backoff_factor=1.0):
+def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
     otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
     download_url = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd'
 
     otp_headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        'Content-Type': 'application/x-www-form-urlencoded; charset=EUC-KR',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
     }
 
     otp_payload = {
@@ -43,14 +47,14 @@ def get_stock_data(trdDd, retries=3, backoff_factor=1.0):
 
     download_headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101',
+        'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
         'Accept-Encoding': 'gzip, deflate',
         'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
         'Cache-Control': 'max-age=0',
         'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': '__smVisitorID=5AohOPWW0ba; JSESSIONID=NgLTkCOznyh1w25KbqjlhknhEfpU4WTwJr7ufBZnaN9BdHRUzXaGMqdgGCor71AW.bWRjX2RvbWFpbi9tZGNvd2FwMi1tZGNhcHAxMQ==',
+        'Cookie': '_ga=GA1.1.1420298847.1720981646; _ga_EGZWJ6FGKM=GS1.1.1720981858.1.1.1720981880.0.0.0; __smVisitorID=Gp68vON1abl; _ga_1EV6XZXVDT=GS1.1.1720981645.1.1.1720983151.0.0.0; _ga_808R2EHLL3=GS1.1.1720986709.1.1.1720986730.0.0.0; _ga_Z6N0DBVT2W=GS1.1.1721740575.3.0.1721740584.0.0.0; JSESSIONID=WA1BGKSbePUVAyniRc3GX3pV2af01VvNbFFgV9iyZO2il8pOzRNNgadwxkxoEyzN.bWRjX2RvbWFpbi9tZGNvd2FwMS1tZGNhcHAwMQ==',
         'Host': 'data.krx.co.kr',
         'Origin': 'http://data.krx.co.kr',
         'Upgrade-Insecure-Requests': '1'
@@ -62,77 +66,103 @@ def get_stock_data(trdDd, retries=3, backoff_factor=1.0):
         'filetype': 'csv'
     }
 
-    with requests.Session() as session:
-        for attempt in range(retries):
-            try:
-                otp_response = session.post(otp_url, headers=otp_headers, data=otp_payload)
-                otp_response.raise_for_status()
-                download_payload['code'] = otp_response.text
+    print(f"Starting download for date: {trdDd}")
 
-                csv_response = session.post(download_url, headers=download_headers, data=download_payload)
-                csv_response.raise_for_status()  # Raise HTTPError for bad responses (4xx and 5xx)
+    for attempt in range(retries):
+        try:
+            otp_response = requests.post(otp_url, headers=otp_headers, data=otp_payload)
+            otp = otp_response.text
+            download_payload['code'] = otp
+            csv_response = requests.post(download_url, headers=download_headers, data=download_payload)
+            csv_content = csv_response.content.decode('euc-kr')
+            data = StringIO(csv_content)
+            df = pd.read_csv(data)
 
-                csv_content = csv_response.content.decode('euc-kr')
-                data = StringIO(csv_content)
-                stock_df = pd.read_csv(data)
+            # 로그로 컬럼 이름 확인
+            print("Downloaded DataFrame columns:", df.columns.tolist())
 
-                return stock_df
-            except (requests.RequestException, requests.exceptions.ChunkedEncodingError) as e:
-                if attempt < retries - 1:
-                    time.sleep(backoff_factor * (2 ** attempt))  # Exponential backoff
-                else:
-                    raise e
+            # 날짜 컬럼 추가
+            df['날짜'] = trdDd
 
+            # 필요한 컬럼만 선택
+            df = df[['종목코드', '종목명', '날짜', '시가', '종가', '고가', '저가', '거래량', '상장주식수']]
 
-def get_filtered_stock_data(start_date, end_date, pbr_stocks):
-    stock_data_list = []
+            print(f"Successfully downloaded data for {trdDd}")
+            return df
+        except KeyError as e:
+            print(f"KeyError occurred: {e}. Retrying in {backoff_factor} seconds...")
+            time.sleep(backoff_factor)
+            backoff_factor *= 2
+        except Exception as e:
+            print(f"Error occurred: {e}. Retrying in {backoff_factor} seconds...")
+            time.sleep(backoff_factor)
+            backoff_factor *= 2
+    print(f"Failed to download data for {trdDd} after {retries} attempts.")
+    return None
 
-    date_range = pd.date_range(start=start_date, end=end_date)
-    for single_date in date_range:
-        if not is_trading_day(single_date):
-            continue  # Skip holidays and weekends
+def get_stock_data_for_period(start_date, end_date, stock_names):
+    business_days = get_business_days(start_date, end_date)
+    all_data = pd.DataFrame()
 
-        trdDd = single_date.strftime('%Y%m%d')
-        print(f"Downloading data for {trdDd}...")
-        stock_data = get_stock_data(trdDd)
-        filtered_stock_data = stock_data[stock_data['종목명'].isin(pbr_stocks['종목명'])].copy()
-        filtered_stock_data.loc[:, '날짜'] = trdDd
-        stock_data_list.append(filtered_stock_data)
+    for business_day in business_days:
+        trdDd = business_day.strftime('%Y%m%d')
+        print(f"Fetching stock data for {trdDd}...")
+        stock_data = get_stock_data_for_date(trdDd)
+        if stock_data is not None:
+            filtered_stock_data = stock_data[stock_data['종목명'].isin(stock_names)]
+            all_data = pd.concat([all_data, filtered_stock_data], ignore_index=True)
+            print(f"Successfully retrieved stock data for {trdDd}")
+        else:
+            print(f"Failed to retrieve stock data for {trdDd}")
 
-    if not stock_data_list:
-        raise ValueError("No trading days found in the given range.")
+    return all_data
 
-    all_filtered_stock_data = pd.concat(stock_data_list, ignore_index=True)
+def merge_data(pbr_dir, stock_data_dir, stock_data):
+    if not os.path.exists(stock_data_dir):
+        os.makedirs(stock_data_dir)
 
-    return all_filtered_stock_data
+    for file in os.listdir(pbr_dir):
+        if file.endswith('.csv'):
+            stock_name = file.split('_')[0]
+            pbr_file_path = os.path.join(pbr_dir, file)
+            pbr_df = pd.read_csv(pbr_file_path)
+            pbr_value = pbr_df['PBR'].values[0]
 
+            matching_stock_data = stock_data[stock_data['종목명'] == stock_name]
 
-def save_individual_stock_files(final_data, save_dir):
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+            if not matching_stock_data.empty:
+                merged_df = matching_stock_data.copy()
+                merged_df['PBR'] = pbr_value
+                save_path = os.path.join(stock_data_dir, f'{stock_name}_merged.csv')
+                merged_df.to_csv(save_path, index=False, encoding='utf-8-sig')
+                print(f"Saved merged data for {stock_name} to {save_path}")
 
-    grouped = final_data.groupby('종목명')
-    for stock_name, group in grouped:
-        group.to_csv(os.path.join(save_dir, f'{stock_name}.csv'), index=False, encoding='utf-8-sig')
-
+def get_pbr_data(pbr_dir, trdDd):
+    pbr_file_path = os.path.join(pbr_dir, f'pbr_data_{trdDd}.csv')
+    if os.path.exists(pbr_file_path):
+        pbr_df = pd.read_csv(pbr_file_path)
+        return pbr_df
+    else:
+        print(f"PBR data file {pbr_file_path} not found.")
+        return pd.DataFrame()
 
 if __name__ == "__main__":
-    start_date = datetime(2023, 1, 1)
-    end_date = datetime(2024, 3, 31)
+    # 기간 설정
+    start_date = datetime.strptime('2023-01-01', '%Y-%m-%d')
+    end_date = datetime.strptime('2024-03-31', '%Y-%m-%d')
 
-    # PBR 데이터에서 종목명과 PBR 값을 가져오기
-    pbr_data, _ = get_pbr_less_one_companies(end_date.strftime('%Y%m%d'))
+    # PBR 데이터가 저장된 디렉토리
+    pbr_dir = 'pbr_data'
 
-    all_filtered_stock_data = get_filtered_stock_data(start_date, end_date, pbr_data)
+    # 주가 데이터 가져오기
+    stock_names = [f.split('_')[0] for f in os.listdir(pbr_dir) if f.endswith('.csv')]
+    stock_df = get_stock_data_for_period(start_date, end_date, stock_names)
 
-    # PBR 데이터를 종목명 기준으로 주가 데이터와 병합
-    final_data = pd.merge(all_filtered_stock_data, pbr_data[['종목명', 'PBR']], on='종목명')
+    if stock_df is not None and not stock_df.empty:
+        print("주가 데이터를 성공적으로 가져왔습니다.")
 
-    # 필요한 컬럼만 추출
-    columns_needed = ['날짜', '종목명', 'PBR', '시가', '고가', '저가', '종가', '거래량', '상장주식수']
-    final_filtered_data = final_data[columns_needed]
-
-    # 개별 종목별로 CSV 파일 저장
-    save_dir = 'stock_data'
-    save_individual_stock_files(final_filtered_data, save_dir)
-    print("Individual Stock Data CSV 파일 저장 완료")
+        # 주가 데이터와 PBR 데이터 병합 및 저장
+        stock_data_dir = 'stock_data'
+        merge_data(pbr_dir, stock_data_dir, stock_df)
+    else:
+        print("주가 데이터를 가져오지 못했습니다.")
