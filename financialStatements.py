@@ -14,7 +14,7 @@ all_corps = dart_fss.api.filings.get_corp_code()
 df = pd.DataFrame(all_corps)
 df_listed = df[df['stock_code'].notnull()].reset_index(drop=True)
 
-
+# 최근 평일
 def get_recent_weekday(date):
     while date.weekday() >= 5:  # 5: 토요일, 6: 일요일
         date -= timedelta(days=1)
@@ -31,6 +31,7 @@ def get_report(corp_df, corp_name, bsns_year, num, fs_div):
 
     bsns_year = str(bsns_year)
 
+    # 분기
     if num == '4':
         reprt_code = '11011'
     elif num == '3':
@@ -93,6 +94,7 @@ def split_report(corp_name, bsns_year, num, df):
     else:
         report_df['BPS'] = None
 
+    # 부채비율, 영업이익, 순이익 구하기
     if report_df['부채 총액'].iloc[0] and report_df['자본 총액'].iloc[0]:
         report_df['부채비율'] = (float(report_df['부채 총액'].iloc[0]) / float(report_df['자본 총액'].iloc[0])) * 100
     else:
@@ -121,7 +123,7 @@ def split_report(corp_name, bsns_year, num, df):
 
     return report_df
 
-
+# pbr_data에서 뽑아온 기업리스트를 재무제표에서 검색해 가져오기
 def get_financial_statements(trdDd):
     pbr_less_one_df, _ = get_pbr_less_one_companies(trdDd)
 
