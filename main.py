@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 
-
 def load_stock_data(directory):
     stock_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
     stock_data_list = []
