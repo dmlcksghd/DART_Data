@@ -4,8 +4,6 @@ import pandas as pd
 from io import StringIO
 from datetime import datetime, timedelta
 
-
-
 def get_recent_weekday(date):
     while date.weekday() >= 5:  # 5: 토요일, 6: 일요일
         date -= timedelta(days=1)
