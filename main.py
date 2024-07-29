@@ -2,7 +2,6 @@ import os
 import pandas as pd
 from datetime import datetime
 
-
 def load_stock_data(directory):
     stock_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
     stock_data_list = []
@@ -11,35 +10,46 @@ def load_stock_data(directory):
         stock_data_list.append(df)
     return pd.concat(stock_data_list, ignore_index=True)
 
-
 def load_financial_statements_data(directory):
     financial_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
     financial_data_list = []
     for file in financial_files:
+        # 분기를 파일명에서 추출 (예: BGF_2023_1Q_report.csv)
+        quarter = int(file.split('_')[2][0])
+        year = int(file.split('_')[1])
         df = pd.read_csv(os.path.join(directory, file), encoding='utf-8-sig')
+        df['분기'] = quarter
+        df['연도'] = year
         # 필요한 컬럼만 선택
-        filtered_df = df[['종목명', 'ROE', 'EPS', 'BPS', '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름']]
+        filtered_df = df[['종목명', '연도', '분기', 'ROE', 'EPS', 'BPS', '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름']]
         financial_data_list.append(filtered_df)
     return pd.concat(financial_data_list, ignore_index=True)
 
+def get_financial_quarter(date):
+    month = date.month
+    if 1 <= month <= 3:
+        return 1
+    elif 4 <= month <= 6:
+        return 2
+    elif 7 <= month <= 9:
+        return 3
+    else:
+        return 4
 
 def merge_stock_and_financial_data(stock_data, financial_data):
-    # 주가 데이터와 재무제표 데이터 병합
     stock_data['날짜'] = pd.to_datetime(stock_data['날짜'], format='%Y%m%d', errors='coerce')
+    stock_data['연도'] = stock_data['날짜'].dt.year
+    stock_data['분기'] = stock_data['날짜'].apply(get_financial_quarter)
 
-    # 병합 키를 종목명으로 설정
-    merged_data = pd.merge(stock_data, financial_data, on='종목명', how='left')
+    # 병합 키를 종목명, 연도, 분기로 설정
+    merged_data = pd.merge(stock_data, financial_data, on=['종목명', '연도', '분기'], how='left')
 
     # 부채비율, 영업이익률, 순이익률 계산
     merged_data['부채비율'] = merged_data['부채 총액'] / merged_data['자본 총액']
     merged_data['영업이익률'] = merged_data['영업이익'] / merged_data['매출액']
     merged_data['순이익률'] = merged_data['순이익'] / merged_data['매출액']
 
-    # 중복 행 제거
-    merged_data.drop_duplicates(subset=['종목명', '날짜'], keep='first', inplace=True)
-
     return merged_data
-
 
 def save_individual_prepared_data_files(final_data, save_dir):
     if not os.path.exists(save_dir):
@@ -49,7 +59,6 @@ def save_individual_prepared_data_files(final_data, save_dir):
     for stock_name, group in grouped:
         group['날짜'] = group['날짜'].dt.strftime('%Y-%m-%d')  # 날짜 형식을 문자열로 변환
         group.to_csv(os.path.join(save_dir, f'{stock_name}_prepared_data.csv'), index=False, encoding='utf-8-sig')
-
 
 if __name__ == "__main__":
     stock_data_dir = 'stock_data'
