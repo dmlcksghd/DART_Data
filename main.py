@@ -35,6 +35,9 @@ def merge_stock_and_financial_data(stock_data, financial_data):
     merged_data['영업이익률'] = merged_data['영업이익'] / merged_data['매출액']
     merged_data['순이익률'] = merged_data['순이익'] / merged_data['매출액']
 
+    # 중복 행 제거
+    merged_data.drop_duplicates(subset=['종목명', '날짜'], keep='first', inplace=True)
+
     return merged_data
 
 
