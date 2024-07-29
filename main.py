@@ -1,54 +1,92 @@
-import pandas as pd
-import numpy as np
-from financialStatements import get_financial_statements
-from stock_data import get_pbr_less_or_equal_stock_data
 import os
-import ta
+import pandas as pd
 from datetime import datetime
 
+def load_stock_data(directory):
+    stock_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
+    stock_data_list = []
+    for file in stock_files:
+        df = pd.read_csv(os.path.join(directory, file), encoding='utf-8-sig')
+        stock_data_list.append(df)
+    return pd.concat(stock_data_list, ignore_index=True)
 
-def calculate_indicators(df):
-    # 기술적 지표 계산
-    df['ATR'] = ta.volatility.AverageTrueRange(df['고가'], df['저가'], df['종가']).average_true_range()
-    df['Bollinger_High'], df['Bollinger_Low'] = ta.volatility.BollingerBands(
-        df['종가']).bollinger_hband(), ta.volatility.BollingerBands(df['종가']).bollinger_lband()
-    df['MACD'], df['MACD_Signal'], _ = ta.trend.MACD(df['종가']).macd(), ta.trend.MACD(
-        df['종가']).macd_signal(), ta.trend.MACD(df['종가']).macd_diff()
-    return df
+def load_financial_statements_data(directory):
+    financial_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
+    financial_data_list = []
+    for file in financial_files:
+        # 분기를 파일명에서 추출 (예: BGF_2023_1Q_report.csv)
+        quarter = int(file.split('_')[2][0])
+        year = int(file.split('_')[1])
+        df = pd.read_csv(os.path.join(directory, file), encoding='utf-8-sig')
+        df['분기'] = quarter
+        df['연도'] = year
+        # 필요한 컬럼만 선택
+        filtered_df = df[['종목명', '연도', '분기', 'ROE', 'EPS', 'BPS', '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름']]
+        financial_data_list.append(filtered_df)
+    return pd.concat(financial_data_list, ignore_index=True)
 
+def get_financial_quarter(date):
+    month = date.month
+    if 1 <= month <= 3:
+        return 1
+    elif 4 <= month <= 6:
+        return 2
+    elif 7 <= month <= 9:
+        return 3
+    else:
+        return 4
 
-def prepare_data(start_date, end_date):
-    # 재무제표 데이터 가져오기
-    financial_data = get_financial_statements(end_date)
+def merge_stock_and_financial_data(stock_data, financial_data):
+    stock_data['날짜'] = pd.to_datetime(stock_data['날짜'], format='%Y%m%d', errors='coerce')
+    stock_data['연도'] = stock_data['날짜'].dt.year
+    stock_data['분기'] = stock_data['날짜'].apply(get_financial_quarter)
 
-    # 주가 데이터 가져오기
-    stock_data = get_pbr_less_or_equal_stock_data(start_date, end_date)
+    # 병합 키를 종목명, 연도, 분기로 설정
+    merged_data = pd.merge(stock_data, financial_data, on=['종목명', '연도', '분기'], how='left')
 
-    # 기술적 지표 계산
-    stock_data = calculate_indicators(stock_data)
-
-    # 데이터 병합
-    merged_data = pd.merge(financial_data, stock_data, on='종목명')
-
-    # 필요시 추가 데이터 로드 (예: 지수 데이터)
-    # index_data = pd.read_csv('path_to_index_data.csv')
-    # merged_data = pd.merge(merged_data, index_data, on='날짜')
-
-    # 필수 항목 제외 결측값 처리
-    merged_data.fillna(0, inplace=True)
+    # 부채비율, 영업이익률, 순이익률 계산
+    merged_data['부채비율'] = merged_data['부채 총액'] / merged_data['자본 총액']
+    merged_data['영업이익률'] = merged_data['영업이익'] / merged_data['매출액']
+    merged_data['순이익률'] = merged_data['순이익'] / merged_data['매출액']
 
     return merged_data
 
-
-if __name__ == "__main__":
-    start_date = '20230101'
-    end_date = '20240331'
-    data = prepare_data(start_date, end_date)
-    print(data.head())
-
-    # 데이터를 CSV로 저장하여 training_model.py에서 불러올 수 있도록 합니다.
-    save_dir = 'data'
+def save_individual_prepared_data_files(final_data, save_dir):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    data.to_csv(os.path.join(save_dir, 'prepared_data.csv'), index=False, encoding='utf-8-sig')
+    grouped = final_data.groupby('종목명')
+    for stock_name, group in grouped:
+        group['날짜'] = group['날짜'].dt.strftime('%Y-%m-%d')  # 날짜 형식을 문자열로 변환
+        group.dropna(inplace=True)  # 결측값이 있는 행 제거
+        group.to_csv(os.path.join(save_dir, f'{stock_name}_prepared_data.csv'), index=False, encoding='utf-8-sig')
+
+if __name__ == "__main__":
+    stock_data_dir = 'stock_data'
+    financial_statements_dir = 'financialStatements'
+    save_dir = 'data'
+
+    # Load stock data
+    stock_data = load_stock_data(stock_data_dir)
+    print("Stock data loaded successfully")
+
+    # Load financial statements data
+    financial_data = load_financial_statements_data(financial_statements_dir)
+    print("Financial statements data loaded successfully")
+
+    # Merge stock data and financial statements data
+    prepared_data = merge_stock_and_financial_data(stock_data, financial_data)
+    print("Data merged successfully")
+
+    # 필요한 컬럼만 추출 및 순서 정리
+    columns_needed = ['종목명', '날짜', 'PBR', '시가', '고가', '저가', '종가', '거래량', '상장주식수',
+                      '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름',
+                      'ROE', 'EPS', 'BPS', '부채비율', '영업이익률', '순이익률']
+    final_filtered_data = prepared_data[columns_needed]
+
+    # 병합 후 데이터 확인
+    print(final_filtered_data.head())
+
+    # Save individual prepared data files
+    save_individual_prepared_data_files(final_filtered_data, save_dir)
+    print("Data preparation complete.")
