@@ -17,7 +17,7 @@ def get_recent_weekday(date):
         date -= timedelta(days=1)
     return date
 
-def determine_file_suffix(original_date, used_date):
+def determine_file_suffix(original_date, used_date):   
     if original_date != used_date:
         if is_holiday(original_date):
             return '_holiday'
