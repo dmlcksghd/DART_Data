@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from datetime import datetime
 
+# 주가데이터 stock_data 가져오기 (이 안에 pbr과 주가데이터 전부 들어있음)
 def load_stock_data(directory):
     stock_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
     stock_data_list = []
@@ -10,6 +11,7 @@ def load_stock_data(directory):
         stock_data_list.append(df)
     return pd.concat(stock_data_list, ignore_index=True)
 
+# 재무제표 데이터 가져오기
 def load_financial_statements_data(directory):
     financial_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
     financial_data_list = []
@@ -21,10 +23,11 @@ def load_financial_statements_data(directory):
         df['분기'] = quarter
         df['연도'] = year
         # 필요한 컬럼만 선택
-        filtered_df = df[['종목명', '연도', '분기', 'ROE', 'EPS', 'BPS', '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름']]
+        filtered_df = df[['종목명', '연도', '분기', 'ROE', 'EPS', 'BPS', '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름', 'ROA', '매출액 증가율']]
         financial_data_list.append(filtered_df)
     return pd.concat(financial_data_list, ignore_index=True)
 
+# stock파일 안에 있는 데이터 중 날짜를 읽어 분기로 나누기
 def get_financial_quarter(date):
     month = date.month
     if 1 <= month <= 3:
@@ -36,6 +39,7 @@ def get_financial_quarter(date):
     else:
         return 4
 
+# stock_data와 financial_data 합치기
 def merge_stock_and_financial_data(stock_data, financial_data):
     stock_data['날짜'] = pd.to_datetime(stock_data['날짜'], format='%Y%m%d', errors='coerce')
     stock_data['연도'] = stock_data['날짜'].dt.year
@@ -51,6 +55,7 @@ def merge_stock_and_financial_data(stock_data, financial_data):
 
     return merged_data
 
+# 합쳐진 데이터를 어떤 기준으로 묶을지
 def save_individual_prepared_data_files(final_data, save_dir):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -81,7 +86,7 @@ if __name__ == "__main__":
     # 필요한 컬럼만 추출 및 순서 정리
     columns_needed = ['종목명', '날짜', 'PBR', '시가', '고가', '저가', '종가', '거래량', '상장주식수',
                       '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름',
-                      'ROE', 'EPS', 'BPS', '부채비율', '영업이익률', '순이익률']
+                      'ROE', 'EPS', 'BPS', '부채비율', '영업이익률', '순이익률', 'ROA', '매출액 증가율']
     final_filtered_data = prepared_data[columns_needed]
 
     # 병합 후 데이터 확인

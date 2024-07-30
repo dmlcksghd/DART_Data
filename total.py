@@ -192,4 +192,6 @@ if __name__ == '__main__':
     
     filtered_data = merge_stock_data(pbr_data, stock_data)
 
+    filtered_data.to_csv('filtered_data.csv', index=False, encoding='euc-kr')
+
     print(filtered_data)

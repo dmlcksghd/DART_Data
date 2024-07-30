@@ -5,19 +5,27 @@ from datetime import datetime, timedelta
 import os
 import holidays
 
+# 공휴일
 def is_holiday(date):
     kr_holidays = holidays.KR(years=date.year)
     return date in kr_holidays
 
+# 주말
 def is_weekend(date):
     return date.weekday() >= 5  # 토요일(5) 또는 일요일(6)
 
+# 최근 영업일
 def get_recent_weekday(date):
     while is_weekend(date) or is_holiday(date):
         date -= timedelta(days=1)
     return date
 
+<<<<<<< HEAD
 def determine_file_suffix(original_date, used_date):   
+=======
+# 영업일
+def determine_file_suffix(original_date, used_date):
+>>>>>>> 5e5ab0db7a6c052e4ec06d3faa37329f256d163a
     if original_date != used_date:
         if is_holiday(original_date):
             return '_holiday'
@@ -25,6 +33,7 @@ def determine_file_suffix(original_date, used_date):
             return '_weekend'
     return ''
 
+# pbr이 1보다 작은 기업 찾기
 def get_pbr_less_one_companies(trdDd):
     # 입력된 거래일자 확인
     if isinstance(trdDd, str):
@@ -105,6 +114,7 @@ def get_pbr_less_one_companies(trdDd):
     # 데이터프레임과 사용된 거래일자 반환
     return pbr_less_one_df, adjusted_trdDd
 
+# pbr데이터 종목명에 따라 분류하여 저장
 def save_individual_pbr_data(pbr_df, save_dir, trdDd, file_suffix):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)

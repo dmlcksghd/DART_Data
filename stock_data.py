@@ -6,15 +6,18 @@ import os
 import holidays
 import time
 
+# 공휴일 확인
 def is_holiday(date):
     kr_holidays = holidays.KR(years=date.year)
     return date in kr_holidays
 
+# 가장 최근 평일 찾기
 def get_recent_weekday(date):
     while date.weekday() > 4 or is_holiday(date):
         date -= timedelta(days=1)
     return date
 
+# 영업일 계산
 def get_business_days(start_date, end_date):
     business_days = []
     current_date = start_date
@@ -24,6 +27,7 @@ def get_business_days(start_date, end_date):
         current_date += timedelta(days=1)
     return business_days
 
+# 주어진 날짜의 주가 데이터를 가져오는 함수
 def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
     otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
     download_url = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd'
@@ -54,7 +58,7 @@ def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
         'Cache-Control': 'max-age=0',
         'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': '_ga=GA1.1.1420298847.1720981646; _ga_EGZWJ6FGKM=GS1.1.1720981858.1.1.1720981880.0.0.0; __smVisitorID=Gp68vON1abl; _ga_1EV6XZXVDT=GS1.1.1720981645.1.1.1720983151.0.0.0; _ga_808R2EHLL3=GS1.1.1720986709.1.1.1720986730.0.0.0; _ga_Z6N0DBVT2W=GS1.1.1721740575.3.0.1721740584.0.0.0; JSESSIONID=WA1BGKSbePUVAyniRc3GX3pV2af01VvNbFFgV9iyZO2il8pOzRNNgadwxkxoEyzN.bWRjX2RvbWFpbi9tZGNvd2FwMS1tZGNhcHAwMQ==',
+        'Cookie': '_ga=GA1.1.1420298847.1720981646; _ga_EGZWJ6FGKM=GS1.1.1720981858.1.1.1720981880.0.0.0; __smVisitorID=Gp68vON1abl; _ga_1EV6XZXVDT=GS1.1.1720981645.1.1.1720983151.0.0.0; _ga_808R2EHLL3=GS1.1.1720986709.1.1.1720986730.0.0.0; _ga_Z6N0DBVT2W=GS1.1.1721740575.3.0.1721740584.0.0.0; JSESSIONID=WA1BGKSbePUVAyniRc3GX3pV2af01VvNbFFgV9iyZO2il8pOzRNNgadwxkxoEyzN.bWRjX2RvbWFpbi9tZGNhcHAwMQ==',
         'Host': 'data.krx.co.kr',
         'Origin': 'http://data.krx.co.kr',
         'Upgrade-Insecure-Requests': '1'
@@ -68,6 +72,7 @@ def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
 
     print(f"Starting download for date: {trdDd}")
 
+    # 실패시 재시도하는 함수
     for attempt in range(retries):
         try:
             otp_response = requests.post(otp_url, headers=otp_headers, data=otp_payload)
@@ -100,6 +105,7 @@ def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
     print(f"Failed to download data for {trdDd} after {retries} attempts.")
     return None
 
+# 주어진 기간의 주가 데이터 가져오기
 def get_stock_data_for_period(start_date, end_date, stock_names):
     business_days = get_business_days(start_date, end_date)
     all_data = pd.DataFrame()
@@ -117,6 +123,7 @@ def get_stock_data_for_period(start_date, end_date, stock_names):
 
     return all_data
 
+# pbr_data와 stock_data 합치기
 def merge_data(pbr_dir, stock_data_dir, stock_data):
     if not os.path.exists(stock_data_dir):
         os.makedirs(stock_data_dir)
@@ -128,7 +135,7 @@ def merge_data(pbr_dir, stock_data_dir, stock_data):
             pbr_df = pd.read_csv(pbr_file_path)
             pbr_value = pbr_df['PBR'].values[0]
 
-            matching_stock_data = stock_data[stock_data['종목명'] == stock_name]
+            matching_stock_data = stock_data[stock_data['종목명'] == stock_name] # pbr데이터와 stock데이터 합칠때 종목명으로 일치시켜서 합치기
 
             if not matching_stock_data.empty:
                 merged_df = matching_stock_data.copy()
@@ -137,6 +144,7 @@ def merge_data(pbr_dir, stock_data_dir, stock_data):
                 merged_df.to_csv(save_path, index=False, encoding='utf-8-sig')
                 print(f"Saved merged data for {stock_name} to {save_path}")
 
+# pbr 데이터 가져오기
 def get_pbr_data(pbr_dir, trdDd):
     pbr_file_path = os.path.join(pbr_dir, f'pbr_data_{trdDd}.csv')
     if os.path.exists(pbr_file_path):
@@ -145,6 +153,16 @@ def get_pbr_data(pbr_dir, trdDd):
     else:
         print(f"PBR data file {pbr_file_path} not found.")
         return pd.DataFrame()
+
+# 7월 30일 데이터 저장 함수 추가
+def save_stock_data_for_july_30(stock_data, save_dir):
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    for stock_name, group in stock_data.groupby('종목명'):
+        save_path = os.path.join(save_dir, f'{stock_name}_20240730.csv')
+        group.to_csv(save_path, index=False, encoding='utf-8-sig')
+        print(f"Saved July 30 data for {stock_name} to {save_path}")
 
 if __name__ == "__main__":
     # 기간 설정
@@ -166,3 +184,14 @@ if __name__ == "__main__":
         merge_data(pbr_dir, stock_data_dir, stock_df)
     else:
         print("주가 데이터를 가져오지 못했습니다.")
+
+    # 7월 30일 데이터 가져오기
+    july_30 = datetime(2024, 7, 30).strftime('%Y%m%d')
+    stock_data_july_30 = get_stock_data_for_date(july_30)
+
+    if stock_data_july_30 is not None and not stock_data_july_30.empty:
+        print("7월 30일 주가 데이터를 성공적으로 가져왔습니다.")
+        now_dir = 'now'
+        save_stock_data_for_july_30(stock_data_july_30, now_dir)
+    else:
+        print("7월 30일 주가 데이터를 가져오지 못했습니다.")
