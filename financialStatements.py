@@ -20,6 +20,8 @@ def get_recent_weekday(date):
         date -= timedelta(days=1)
     return date
 
+# 이전 분기 매출액을 저장하기 위한 딕셔너리
+previous_sales = {}
 
 # 특정 재무제표 데이터 가져오기
 def get_report(corp_df, corp_name, bsns_year, num, fs_div):
@@ -50,9 +52,10 @@ def get_report(corp_df, corp_name, bsns_year, num, fs_div):
         print(f'{corp_name}의 {bsns_year}년 {num}분기 데이터 가져오기에 실패했습니다: {e}')
         return pd.DataFrame()
 
-
 # 재무제표 데이터를 분할하여 저장 및 출력
 def split_report(corp_name, bsns_year, num, df):
+    global previous_sales
+
     items_of_interest = {
         '자산 총액': 'ifrs-full_Assets',
         '부채 총액': 'ifrs-full_Liabilities',
@@ -76,42 +79,66 @@ def split_report(corp_name, bsns_year, num, df):
         else:
             report_data[item_name] = None
 
-    report_df = pd.DataFrame([report_data])
-
-    # ROE, EPS, BPS 계산
-    if report_df['자본 총액'].iloc[0] and report_df['순이익'].iloc[0]:
-        report_df['ROE'] = (float(report_df['순이익'].iloc[0]) / float(report_df['자본 총액'].iloc[0])) * 100
-    else:
-        report_df['ROE'] = None
-
-    if report_df['순이익'].iloc[0] and report_df['상장주식수'].iloc[0]:
-        report_df['EPS'] = float(report_df['순이익'].iloc[0]) / float(report_df['상장주식수'].iloc[0])
-    else:
-        report_df['EPS'] = None
-
-    if report_df['자본 총액'].iloc[0] and report_df['상장주식수'].iloc[0]:
-        report_df['BPS'] = float(report_df['자본 총액'].iloc[0]) / float(report_df['상장주식수'].iloc[0])
-    else:
-        report_df['BPS'] = None
-
-    # 부채비율, 영업이익, 순이익 구하기
-    if report_df['부채 총액'].iloc[0] and report_df['자본 총액'].iloc[0]:
-        report_df['부채비율'] = (float(report_df['부채 총액'].iloc[0]) / float(report_df['자본 총액'].iloc[0])) * 100
-    else:
-        report_df['부채비율'] = None
-
-    if report_df['영업이익'].iloc[0] and report_df['매출액'].iloc[0]:
-        report_df['영업이익률'] = (float(report_df['영업이익'].iloc[0]) / float(report_df['매출액'].iloc[0])) * 100
-    else:
-        report_df['영업이익률'] = None
-
-    if report_df['순이익'].iloc[0] and report_df['매출액'].iloc[0]:
-        if float(report_df['매출액'].iloc[0]) != 0:
-            report_df['순이익률'] = (float(report_df['순이익'].iloc[0]) / float(report_df['매출액'].iloc[0])) * 100
+    # 매출액 증가율 계산
+    current_sales = report_data['매출액']
+    if corp_name in previous_sales:
+        prev_sales = previous_sales[corp_name]
+        if prev_sales is not None and current_sales is not None:
+            try:
+                sales_growth = ((float(current_sales) - float(prev_sales)) / float(prev_sales)) * 100
+            except ZeroDivisionError:
+                sales_growth = None
         else:
-            report_df['순이익률'] = None
+            sales_growth = None
     else:
-        report_df['순이익률'] = None
+        sales_growth = None
+
+    # 현재 분기의 매출액을 저장하여 다음 분기 계산에 사용
+    previous_sales[corp_name] = current_sales
+
+    # ROE, EPS, BPS, ROA, 매출액 증가율 계산
+    if report_data['자본 총액'] and report_data['순이익']:
+        report_data['ROE'] = (float(report_data['순이익']) / float(report_data['자본 총액'])) * 100
+    else:
+        report_data['ROE'] = None
+
+    if report_data['순이익'] and report_data['상장주식수']:
+        report_data['EPS'] = float(report_data['순이익']) / float(report_data['상장주식수'])
+    else:
+        report_data['EPS'] = None
+
+    if report_data['자본 총액'] and report_data['상장주식수']:
+        report_data['BPS'] = float(report_data['자본 총액']) / float(report_data['상장주식수'])
+    else:
+        report_data['BPS'] = None
+
+    if report_data['부채 총액'] and report_data['자본 총액']:
+        report_data['부채비율'] = (float(report_data['부채 총액']) / float(report_data['자본 총액'])) * 100
+    else:
+        report_data['부채비율'] = None
+
+    if report_data['영업이익'] and report_data['매출액']:
+        report_data['영업이익률'] = (float(report_data['영업이익']) / float(report_data['매출액'])) * 100
+    else:
+        report_data['영업이익률'] = None
+
+    if report_data['순이익'] and report_data['매출액']:
+        if float(report_data['매출액']) != 0:
+            report_data['순이익률'] = (float(report_data['순이익']) / float(report_data['매출액'])) * 100
+        else:
+            report_data['순이익률'] = None
+    else:
+        report_data['순이익률'] = None
+
+    if report_data['순이익'] and report_data['자산 총액']:
+        report_data['ROA'] = (float(report_data['순이익']) / float(report_data['자산 총액'])) * 100
+    else:
+        report_data['ROA'] = None
+
+    report_data['매출액 증가율'] = sales_growth
+
+    # 결과를 데이터프레임으로 저장
+    report_df = pd.DataFrame([report_data])
 
     # 디렉토리 생성
     if not os.path.exists('financialStatements'):

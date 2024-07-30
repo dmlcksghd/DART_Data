@@ -1,5 +1,5 @@
-import pandas as pd
 import os
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
@@ -10,7 +10,7 @@ import numpy as np
 def train_and_predict(data):
     # 피처 및 타겟 설정
     features = ['자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름', '상장주식수',
-                'ROE', 'EPS', 'BPS', '부채비율', '영업이익률', '순이익률']
+                'ROE', 'EPS', 'BPS', '부채비율', '영업이익률', '순이익률', 'ROA', '매출액 증가율']
     target = '종가'
 
     X = data[features]
@@ -72,25 +72,22 @@ if __name__ == "__main__":
         # 가장 최신 데이터 선택
         latest_data = group.sort_values(by='날짜').iloc[-1]
         features = ['자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름',
-                    '상장주식수', 'ROE', 'EPS', 'BPS', '부채비율', '영업이익률', '순이익률']
+                    '상장주식수', 'ROE', 'EPS', 'BPS', '부채비율', '영업이익률', '순이익률', 'ROA', '매출액 증가율']
         X_latest = latest_data[features].values.reshape(1, -1)
         X_latest = scaler.transform(X_latest)
 
         # 최신 데이터로 예측
         predicted_price = model.predict(X_latest)[0]
-        predictions.append({'종목명': company, '날짜': latest_data['날짜'], '실제 종가': latest_data['종가'],
-                            '예측 주가': predicted_price, 'MAE': mae, 'MSE': mse, 'R²': r2})
+        actual_price = latest_data['종가']
+        price_difference = predicted_price - actual_price
+
+        # 결과 저장
+        predictions.append({'종목명': company, '날짜': latest_data['날짜'], '실제 종가': actual_price,
+                            '예측 주가': predicted_price, 'MAE': mae, 'MSE': mse, 'R²': r2, '차이': price_difference})
 
     # 예측 결과를 데이터프레임으로 변환
     prediction_df = pd.DataFrame(predictions)
     print(prediction_df)
-
-    # 결과를 CSV 파일로 저장
-    predicted_price_dir = 'predicted_price'
-    if not os.path.exists(predicted_price_dir):
-        os.makedirs(predicted_price_dir)
-
-    prediction_df.to_csv(os.path.join(predicted_price_dir, 'Predicted_Stock_Prices.csv'), index=False, encoding='utf-8-sig')
 
     # 모델 및 스케일러 저장
     model_dir = 'models'
@@ -102,3 +99,7 @@ if __name__ == "__main__":
         model, scaler, _, _, _ = train_and_predict(group)
         joblib.dump(model, os.path.join(model_dir, f'{company}_model.pkl'))
         joblib.dump(scaler, os.path.join(model_dir, f'{company}_scaler.pkl'))
+
+    # 예측 결과를 CSV 파일로 저장
+    prediction_df.to_csv(os.path.join(save_dir, 'latest_predictions.csv'), index=False, encoding='utf-8-sig')
+    print("Predictions saved to latest_predictions.csv")

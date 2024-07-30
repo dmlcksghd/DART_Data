@@ -6,18 +6,18 @@ import os
 import holidays
 import time
 
-# 공휴일
+# 공휴일 확인
 def is_holiday(date):
     kr_holidays = holidays.KR(years=date.year)
     return date in kr_holidays
 
-# 가장 최근 평일
+# 가장 최근 평일 찾기
 def get_recent_weekday(date):
     while date.weekday() > 4 or is_holiday(date):
         date -= timedelta(days=1)
     return date
 
-# 영업일
+# 영업일 계산
 def get_business_days(start_date, end_date):
     business_days = []
     current_date = start_date
@@ -27,7 +27,7 @@ def get_business_days(start_date, end_date):
         current_date += timedelta(days=1)
     return business_days
 
-# 크롤링
+# 주어진 날짜의 주가 데이터를 가져오는 함수
 def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
     otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
     download_url = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd'
@@ -58,7 +58,7 @@ def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
         'Cache-Control': 'max-age=0',
         'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': '_ga=GA1.1.1420298847.1720981646; _ga_EGZWJ6FGKM=GS1.1.1720981858.1.1.1720981880.0.0.0; __smVisitorID=Gp68vON1abl; _ga_1EV6XZXVDT=GS1.1.1720981645.1.1.1720983151.0.0.0; _ga_808R2EHLL3=GS1.1.1720986709.1.1.1720986730.0.0.0; _ga_Z6N0DBVT2W=GS1.1.1721740575.3.0.1721740584.0.0.0; JSESSIONID=WA1BGKSbePUVAyniRc3GX3pV2af01VvNbFFgV9iyZO2il8pOzRNNgadwxkxoEyzN.bWRjX2RvbWFpbi9tZGNvd2FwMS1tZGNhcHAwMQ==',
+        'Cookie': '_ga=GA1.1.1420298847.1720981646; _ga_EGZWJ6FGKM=GS1.1.1720981858.1.1.1720981880.0.0.0; __smVisitorID=Gp68vON1abl; _ga_1EV6XZXVDT=GS1.1.1720981645.1.1.1720983151.0.0.0; _ga_808R2EHLL3=GS1.1.1720986709.1.1.1720986730.0.0.0; _ga_Z6N0DBVT2W=GS1.1.1721740575.3.0.1721740584.0.0.0; JSESSIONID=WA1BGKSbePUVAyniRc3GX3pV2af01VvNbFFgV9iyZO2il8pOzRNNgadwxkxoEyzN.bWRjX2RvbWFpbi9tZGNhcHAwMQ==',
         'Host': 'data.krx.co.kr',
         'Origin': 'http://data.krx.co.kr',
         'Upgrade-Insecure-Requests': '1'
@@ -83,7 +83,6 @@ def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
             data = StringIO(csv_content)
             df = pd.read_csv(data)
 
-            # 목록 만들기
             # 로그로 컬럼 이름 확인
             print("Downloaded DataFrame columns:", df.columns.tolist())
 
@@ -155,10 +154,20 @@ def get_pbr_data(pbr_dir, trdDd):
         print(f"PBR data file {pbr_file_path} not found.")
         return pd.DataFrame()
 
+# 7월 30일 데이터 저장 함수 추가
+def save_stock_data_for_july_30(stock_data, save_dir):
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    for stock_name, group in stock_data.groupby('종목명'):
+        save_path = os.path.join(save_dir, f'{stock_name}_20240730.csv')
+        group.to_csv(save_path, index=False, encoding='utf-8-sig')
+        print(f"Saved July 30 data for {stock_name} to {save_path}")
+
 if __name__ == "__main__":
     # 기간 설정
     start_date = datetime.strptime('2023-01-01', '%Y-%m-%d')
-    end_date = datetime.strptime('2024-07-30', '%Y-%m-%d')
+    end_date = datetime.strptime('2024-03-31', '%Y-%m-%d')
 
     # PBR 데이터가 저장된 디렉토리
     pbr_dir = 'pbr_data'
@@ -175,3 +184,14 @@ if __name__ == "__main__":
         merge_data(pbr_dir, stock_data_dir, stock_df)
     else:
         print("주가 데이터를 가져오지 못했습니다.")
+
+    # 7월 30일 데이터 가져오기
+    july_30 = datetime(2024, 7, 30).strftime('%Y%m%d')
+    stock_data_july_30 = get_stock_data_for_date(july_30)
+
+    if stock_data_july_30 is not None and not stock_data_july_30.empty:
+        print("7월 30일 주가 데이터를 성공적으로 가져왔습니다.")
+        now_dir = 'now'
+        save_stock_data_for_july_30(stock_data_july_30, now_dir)
+    else:
+        print("7월 30일 주가 데이터를 가져오지 못했습니다.")

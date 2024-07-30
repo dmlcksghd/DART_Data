@@ -23,7 +23,7 @@ def load_financial_statements_data(directory):
         df['분기'] = quarter
         df['연도'] = year
         # 필요한 컬럼만 선택
-        filtered_df = df[['종목명', '연도', '분기', 'ROE', 'EPS', 'BPS', '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름']]
+        filtered_df = df[['종목명', '연도', '분기', 'ROE', 'EPS', 'BPS', '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름', 'ROA', '매출액 증가율']]
         financial_data_list.append(filtered_df)
     return pd.concat(financial_data_list, ignore_index=True)
 
@@ -48,7 +48,6 @@ def merge_stock_and_financial_data(stock_data, financial_data):
     # 병합 키를 종목명, 연도, 분기로 설정
     merged_data = pd.merge(stock_data, financial_data, on=['종목명', '연도', '분기'], how='left')
 
-### 이게 왜 필요한지? 이미 financialStatements.py에서 계산한 값이 있는거 같은데 ###
     # 부채비율, 영업이익률, 순이익률 계산
     merged_data['부채비율'] = merged_data['부채 총액'] / merged_data['자본 총액']
     merged_data['영업이익률'] = merged_data['영업이익'] / merged_data['매출액']
@@ -87,7 +86,7 @@ if __name__ == "__main__":
     # 필요한 컬럼만 추출 및 순서 정리
     columns_needed = ['종목명', '날짜', 'PBR', '시가', '고가', '저가', '종가', '거래량', '상장주식수',
                       '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름',
-                      'ROE', 'EPS', 'BPS', '부채비율', '영업이익률', '순이익률']
+                      'ROE', 'EPS', 'BPS', '부채비율', '영업이익률', '순이익률', 'ROA', '매출액 증가율']
     final_filtered_data = prepared_data[columns_needed]
 
     # 병합 후 데이터 확인
