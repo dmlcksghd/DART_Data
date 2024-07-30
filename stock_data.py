@@ -6,15 +6,18 @@ import os
 import holidays
 import time
 
+# 공휴일
 def is_holiday(date):
     kr_holidays = holidays.KR(years=date.year)
     return date in kr_holidays
 
+# 가장 최근 평일
 def get_recent_weekday(date):
     while date.weekday() > 4 or is_holiday(date):
         date -= timedelta(days=1)
     return date
 
+# 영업일
 def get_business_days(start_date, end_date):
     business_days = []
     current_date = start_date
@@ -24,6 +27,7 @@ def get_business_days(start_date, end_date):
         current_date += timedelta(days=1)
     return business_days
 
+# 크롤링
 def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
     otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
     download_url = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd'
@@ -68,6 +72,7 @@ def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
 
     print(f"Starting download for date: {trdDd}")
 
+    # 실패시 재시도하는 함수
     for attempt in range(retries):
         try:
             otp_response = requests.post(otp_url, headers=otp_headers, data=otp_payload)
@@ -78,6 +83,7 @@ def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
             data = StringIO(csv_content)
             df = pd.read_csv(data)
 
+            # 목록 만들기
             # 로그로 컬럼 이름 확인
             print("Downloaded DataFrame columns:", df.columns.tolist())
 
@@ -100,6 +106,7 @@ def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
     print(f"Failed to download data for {trdDd} after {retries} attempts.")
     return None
 
+# 주어진 기간의 주가 데이터 가져오기
 def get_stock_data_for_period(start_date, end_date, stock_names):
     business_days = get_business_days(start_date, end_date)
     all_data = pd.DataFrame()
@@ -117,6 +124,7 @@ def get_stock_data_for_period(start_date, end_date, stock_names):
 
     return all_data
 
+# pbr_data와 stock_data 합치기
 def merge_data(pbr_dir, stock_data_dir, stock_data):
     if not os.path.exists(stock_data_dir):
         os.makedirs(stock_data_dir)
@@ -128,7 +136,7 @@ def merge_data(pbr_dir, stock_data_dir, stock_data):
             pbr_df = pd.read_csv(pbr_file_path)
             pbr_value = pbr_df['PBR'].values[0]
 
-            matching_stock_data = stock_data[stock_data['종목명'] == stock_name]
+            matching_stock_data = stock_data[stock_data['종목명'] == stock_name] # pbr데이터와 stock데이터 합칠때 종목명으로 일치시켜서 합치기
 
             if not matching_stock_data.empty:
                 merged_df = matching_stock_data.copy()
@@ -137,6 +145,7 @@ def merge_data(pbr_dir, stock_data_dir, stock_data):
                 merged_df.to_csv(save_path, index=False, encoding='utf-8-sig')
                 print(f"Saved merged data for {stock_name} to {save_path}")
 
+# pbr 데이터 가져오기
 def get_pbr_data(pbr_dir, trdDd):
     pbr_file_path = os.path.join(pbr_dir, f'pbr_data_{trdDd}.csv')
     if os.path.exists(pbr_file_path):

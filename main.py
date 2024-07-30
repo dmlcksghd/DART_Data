@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from datetime import datetime
 
+# 주가데이터 stock_data 가져오기 (이 안에 pbr과 주가데이터 전부 들어있음)
 def load_stock_data(directory):
     stock_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
     stock_data_list = []
@@ -10,6 +11,7 @@ def load_stock_data(directory):
         stock_data_list.append(df)
     return pd.concat(stock_data_list, ignore_index=True)
 
+# 재무제표 데이터 가져오기
 def load_financial_statements_data(directory):
     financial_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
     financial_data_list = []
@@ -25,6 +27,7 @@ def load_financial_statements_data(directory):
         financial_data_list.append(filtered_df)
     return pd.concat(financial_data_list, ignore_index=True)
 
+# stock파일 안에 있는 데이터 중 날짜를 읽어 분기로 나누기
 def get_financial_quarter(date):
     month = date.month
     if 1 <= month <= 3:
@@ -36,6 +39,7 @@ def get_financial_quarter(date):
     else:
         return 4
 
+# stock_data와 financial_data 합치기
 def merge_stock_and_financial_data(stock_data, financial_data):
     stock_data['날짜'] = pd.to_datetime(stock_data['날짜'], format='%Y%m%d', errors='coerce')
     stock_data['연도'] = stock_data['날짜'].dt.year
@@ -44,6 +48,7 @@ def merge_stock_and_financial_data(stock_data, financial_data):
     # 병합 키를 종목명, 연도, 분기로 설정
     merged_data = pd.merge(stock_data, financial_data, on=['종목명', '연도', '분기'], how='left')
 
+### 이게 왜 필요한지? 이미 financialStatements.py에서 계산한 값이 있는거 같은데 ###
     # 부채비율, 영업이익률, 순이익률 계산
     merged_data['부채비율'] = merged_data['부채 총액'] / merged_data['자본 총액']
     merged_data['영업이익률'] = merged_data['영업이익'] / merged_data['매출액']
@@ -51,6 +56,7 @@ def merge_stock_and_financial_data(stock_data, financial_data):
 
     return merged_data
 
+# 합쳐진 데이터를 어떤 기준으로 묶을지
 def save_individual_prepared_data_files(final_data, save_dir):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
