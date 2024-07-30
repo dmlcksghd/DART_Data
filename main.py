@@ -64,7 +64,7 @@ def save_individual_prepared_data_files(final_data, save_dir):
     grouped = final_data.groupby('종목명')
     for stock_name, group in grouped:
         group['날짜'] = group['날짜'].dt.strftime('%Y-%m-%d')  # 날짜 형식을 문자열로 변환
-        group.dropna(inplace=True)  # 결측값이 있는 행 제거
+        # group.dropna(inplace=True)  # 결측값이 있는 행 제거
         group.to_csv(os.path.join(save_dir, f'{stock_name}_prepared_data.csv'), index=False, encoding='utf-8-sig')
 
 if __name__ == "__main__":
