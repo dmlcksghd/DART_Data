@@ -149,7 +149,7 @@ def get_pbr_data(pbr_dir, trdDd):
 if __name__ == "__main__":
     # 기간 설정
     start_date = datetime.strptime('2023-01-01', '%Y-%m-%d')
-    end_date = datetime.strptime('2024-03-31', '%Y-%m-%d')
+    end_date = datetime.strptime('2024-07-30', '%Y-%m-%d')
 
     # PBR 데이터가 저장된 디렉토리
     pbr_dir = 'pbr_data'
