@@ -166,8 +166,6 @@ def merge_recent_data_with_pbr(stock_names, pbr_dir):
     else:
         print(f"Failed to retrieve stock data for {trdDd}")
 
-
-
 # pbr_data와 주가 데이터를 합치는 함수
 if __name__ == "__main__":
     # 날짜를 7월 29일로 설정
