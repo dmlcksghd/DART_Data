@@ -8,6 +8,7 @@ data_output_dir = 'data'
 
 # 가중치 설정 (조정된 가중치 예시)
 weights = {
+
     'PER': 0.30,
     'Dividend Yield': 0.20,
     'ROE': 0.30,
