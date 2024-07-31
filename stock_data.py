@@ -206,7 +206,7 @@ if __name__ == '__main__':
     filtered_data = merge_stock_data(pbr_data, stock_data)
 
     # 디렉토리 생성
-    output_dir = 'filtered_data'
+    output_dir = 'stock_and_pbr'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 

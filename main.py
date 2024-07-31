@@ -3,7 +3,7 @@ import os
 from sklearn.preprocessing import MinMaxScaler
 
 # 디렉토리 경로 설정
-filtered_data_dir = 'filtered_data'
+filtered_data_dir = 'stock_and_pbr'
 data_output_dir = 'data'
 
 # 가중치 설정 (조정된 가중치 예시)
