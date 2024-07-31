@@ -3,7 +3,7 @@ import os
 from sklearn.preprocessing import MinMaxScaler
 
 # 디렉토리 경로 설정
-filtered_data_dir = 'stock_and_pbr'
+data_merge_final_dir = 'data_merge_final'  # 데이터가 저장된 디렉토리
 data_output_dir = 'data'
 
 # 가중치 설정 (조정된 가중치 예시)
@@ -14,17 +14,14 @@ weights = {
     'PBR': 0.20
 }
 
-
 def load_and_process_file(file_path):
     try:
         # 데이터 로드
         data = pd.read_csv(file_path, sep=',', encoding='euc-kr')  # 데이터 인코딩과 구분자 확인
 
-        # 컬럼 이름 확인
-        print(f"Columns in file {file_path}: {data.columns.tolist()}")
-
         # 필요한 컬럼만 선택하고 결측값 제거
-        columns = ['종목코드', '종목명', 'EPS', 'BPS', 'PER', 'PBR', '배당수익률', 'ROE', '날짜', '종가', '거래량', '상장주식수', '등락률']
+        columns = ['종목코드', '종목명', 'EPS', 'BPS', 'PER', 'PBR', '배당수익률', 'ROE', '날짜', '종가', '거래량', '상장주식수', '등락률',
+                   'KOSPI', 'KOSDAQ', 'NASDAQ', 'Dow Jones', 'S&P 500', 'Nikkei']
 
         # 실제 존재하는 컬럼만 선택
         existing_columns = [col for col in columns if col in data.columns]
@@ -36,12 +33,11 @@ def load_and_process_file(file_path):
         print(f"Error reading {file_path}: {e}")
         return pd.DataFrame()  # 오류가 발생하면 빈 데이터프레임 반환
 
-
 # 모든 파일에서 데이터 로드 및 처리
 all_data = []
-for file_name in os.listdir(filtered_data_dir):
+for file_name in os.listdir(data_merge_final_dir):
     if file_name.endswith('.csv'):
-        file_path = os.path.join(filtered_data_dir, file_name)
+        file_path = os.path.join(data_merge_final_dir, file_name)
         df = load_and_process_file(file_path)
         all_data.append(df)
 
@@ -67,9 +63,9 @@ ranked_companies = full_data.groupby('종목명').mean().sort_values(by='Final S
 top_50_companies = ranked_companies.head(50).copy()  # 명시적으로 복사
 
 # 상위 50개 기업의 데이터 추출 및 저장
-for file_name in os.listdir(filtered_data_dir):
+for file_name in os.listdir(data_merge_final_dir):
     if file_name.endswith('.csv'):
-        file_path = os.path.join(filtered_data_dir, file_name)
+        file_path = os.path.join(data_merge_final_dir, file_name)
         df = load_and_process_file(file_path)
 
         # 종목 코드 또는 이름이 상위 50개 목록에 있는지 확인

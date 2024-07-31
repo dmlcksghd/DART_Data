@@ -4,6 +4,7 @@ from io import StringIO
 from datetime import datetime, timedelta
 import holidays
 import time
+import os
 
 
 # 공휴일을 확인하는 함수
@@ -107,6 +108,7 @@ def get_stock_data_for_date(trdDd, retries=3, backoff_factor=1.0):
     print(f"Failed to download data for {trdDd} after {retries} attempts.")
     return None
 
+
 # 특정 기간의 주가 데이터를 가져오는 함수
 def get_stock_data_for_period(start_date, end_date, stock_names):
     business_days = get_business_days(start_date, end_date)
@@ -190,12 +192,16 @@ def merge_stock_data(df1, df2):
     df = pd.merge(left=df1, right=df2, how='left', on=['종목코드', '종목명'])
     return df
 
-import os
 
 if __name__ == '__main__':
     start_date = datetime(2024, 3, 1)
     end_date = datetime(2024, 3, 10)
-    date = datetime.now().strftime('%Y%m%d')
+
+    now = datetime.now()
+    if now.hour < 10:
+        date = get_recent_weekday(now - timedelta(days=1)).strftime('%Y%m%d')
+    else:
+        date = get_recent_weekday(now).strftime('%Y%m%d')
 
     pbr_data = get_pbr_less_one_companies(date)
 
@@ -210,12 +216,24 @@ if __name__ == '__main__':
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    now_output_dir = 'now_stock_and_pbr'
+    if not os.path.exists(now_output_dir):
+        os.makedirs(now_output_dir)
+
     # 종목명별로 파일 저장
     for stock_name in stock_names:
         stock_specific_data = filtered_data[filtered_data['종목명'] == stock_name]
         file_path = os.path.join(output_dir, f'{stock_name}.csv')
         stock_specific_data.to_csv(file_path, index=False, encoding='euc-kr')
 
-    print(f"Data saved to {output_dir} directory.")
+    # 오늘의 데이터 저장
+    today_stock_data = get_stock_data_for_date(date)
+    if today_stock_data is not None:
+        today_filtered_data = today_stock_data[today_stock_data['종목명'].isin(stock_names)]
+        today_filtered_data = merge_stock_data(pbr_data, today_filtered_data)
+        for stock_name in stock_names:
+            stock_specific_data = today_filtered_data[today_filtered_data['종목명'] == stock_name]
+            file_path = os.path.join(now_output_dir, f'{stock_name}.csv')
+            stock_specific_data.to_csv(file_path, index=False, encoding='euc-kr')
 
-
+    print(f"Data saved to {output_dir} and today's data saved to {now_output_dir} directory.")
