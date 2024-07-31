@@ -112,6 +112,11 @@ def split_report(corp_name, bsns_year, num, df):
     else:
         report_data['BPS'] = None
 
+    if report_data['순이익'] and report_data['자산 총액']:
+        report_data['ROA'] = (float(report_data['순이익']) / float(report_data['자산 총액'])) * 100
+    else:
+        report_data['ROA'] = None
+
     if report_data['부채 총액'] and report_data['자본 총액']:
         report_data['부채비율'] = (float(report_data['부채 총액']) / float(report_data['자본 총액'])) * 100
     else:
@@ -130,10 +135,7 @@ def split_report(corp_name, bsns_year, num, df):
     else:
         report_data['순이익률'] = None
 
-    if report_data['순이익'] and report_data['자산 총액']:
-        report_data['ROA'] = (float(report_data['순이익']) / float(report_data['자산 총액'])) * 100
-    else:
-        report_data['ROA'] = None
+
 
     report_data['매출액 증가율'] = sales_growth
 

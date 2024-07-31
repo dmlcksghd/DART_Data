@@ -1,97 +1,88 @@
-import os
 import pandas as pd
-from datetime import datetime
+import os
+from sklearn.preprocessing import MinMaxScaler
 
-# 주가데이터 stock_data 가져오기 (이 안에 pbr과 주가데이터 전부 들어있음)
-def load_stock_data(directory):
-    stock_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
-    stock_data_list = []
-    for file in stock_files:
-        df = pd.read_csv(os.path.join(directory, file), encoding='utf-8-sig')
-        stock_data_list.append(df)
-    return pd.concat(stock_data_list, ignore_index=True)
+# 디렉토리 경로 설정
+data_merge_final_dir = 'data_merge_final'  # 데이터가 저장된 디렉토리
+data_output_dir = 'data'
 
-# 재무제표 데이터 가져오기
-def load_financial_statements_data(directory):
-    financial_files = [f for f in os.listdir(directory) if f.endswith('.csv')]
-    financial_data_list = []
-    for file in financial_files:
-        # 분기를 파일명에서 추출 (예: BGF_2023_1Q_report.csv)
-        quarter = int(file.split('_')[2][0])
-        year = int(file.split('_')[1])
-        df = pd.read_csv(os.path.join(directory, file), encoding='utf-8-sig')
-        df['분기'] = quarter
-        df['연도'] = year
-        # 필요한 컬럼만 선택
-        filtered_df = df[['종목명', '연도', '분기', 'ROE', 'EPS', 'BPS', '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름', 'ROA', '매출액 증가율']]
-        financial_data_list.append(filtered_df)
-    return pd.concat(financial_data_list, ignore_index=True)
+# 가중치 설정 (조정된 가중치 예시)
+weights = {
+    'PER': 0.30,
+    'Dividend Yield': 0.20,
+    'ROE': 0.30,
+    'PBR': 0.20
+}
 
-# stock파일 안에 있는 데이터 중 날짜를 읽어 분기로 나누기
-def get_financial_quarter(date):
-    month = date.month
-    if 1 <= month <= 3:
-        return 1
-    elif 4 <= month <= 6:
-        return 2
-    elif 7 <= month <= 9:
-        return 3
-    else:
-        return 4
+def load_and_process_file(file_path):
+    try:
+        # 데이터 로드
+        data = pd.read_csv(file_path, sep=',', encoding='euc-kr')  # 데이터 인코딩과 구분자 확인
 
-# stock_data와 financial_data 합치기
-def merge_stock_and_financial_data(stock_data, financial_data):
-    stock_data['날짜'] = pd.to_datetime(stock_data['날짜'], format='%Y%m%d', errors='coerce')
-    stock_data['연도'] = stock_data['날짜'].dt.year
-    stock_data['분기'] = stock_data['날짜'].apply(get_financial_quarter)
+        # 필요한 컬럼만 선택하고 결측값 제거
+        columns = ['종목코드', '종목명', 'EPS', 'BPS', 'PER', 'PBR', '배당수익률', 'ROE', '날짜', '종가', '거래량', '상장주식수', '등락률',
+                   'KOSPI', 'KOSDAQ', 'NASDAQ', 'Dow Jones', 'S&P 500', 'Nikkei']
 
-    # 병합 키를 종목명, 연도, 분기로 설정
-    merged_data = pd.merge(stock_data, financial_data, on=['종목명', '연도', '분기'], how='left')
+        # 실제 존재하는 컬럼만 선택
+        existing_columns = [col for col in columns if col in data.columns]
+        data = data[existing_columns].dropna()
 
-    # 부채비율, 영업이익률, 순이익률 계산
-    merged_data['부채비율'] = merged_data['부채 총액'] / merged_data['자본 총액']
-    merged_data['영업이익률'] = merged_data['영업이익'] / merged_data['매출액']
-    merged_data['순이익률'] = merged_data['순이익'] / merged_data['매출액']
+        return data
 
-    return merged_data
+    except Exception as e:
+        print(f"Error reading {file_path}: {e}")
+        return pd.DataFrame()  # 오류가 발생하면 빈 데이터프레임 반환
 
-# 합쳐진 데이터를 어떤 기준으로 묶을지
-def save_individual_prepared_data_files(final_data, save_dir):
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+# 모든 파일에서 데이터 로드 및 처리
+all_data = []
+for file_name in os.listdir(data_merge_final_dir):
+    if file_name.endswith('.csv'):
+        file_path = os.path.join(data_merge_final_dir, file_name)
+        df = load_and_process_file(file_path)
+        all_data.append(df)
 
-    grouped = final_data.groupby('종목명')
-    for stock_name, group in grouped:
-        group['날짜'] = group['날짜'].dt.strftime('%Y-%m-%d')  # 날짜 형식을 문자열로 변환
-        group.dropna(inplace=True)  # 결측값이 있는 행 제거
-        group.to_csv(os.path.join(save_dir, f'{stock_name}_prepared_data.csv'), index=False, encoding='utf-8-sig')
+# 데이터 병합
+full_data = pd.concat(all_data, ignore_index=True)
 
-if __name__ == "__main__":
-    stock_data_dir = 'stock_data'
-    financial_statements_dir = 'financialStatements'
-    save_dir = 'data'
+# 데이터 정규화
+scaler = MinMaxScaler()
+full_data[['Normalized PER', 'Normalized 배당수익률', 'Normalized ROE', 'Normalized PBR']] = scaler.fit_transform(
+    full_data[['PER', '배당수익률', 'ROE', 'PBR']]
+)
 
-    # Load stock data
-    stock_data = load_stock_data(stock_data_dir)
-    print("Stock data loaded successfully")
+# 가중치 적용
+full_data['Final Score'] = (
+    (1 - full_data['Normalized PER']) * weights['PER'] +
+    full_data['Normalized 배당수익률'] * weights['Dividend Yield'] +
+    full_data['Normalized ROE'] * weights['ROE'] +
+    (1 - full_data['Normalized PBR']) * weights['PBR']
+)
 
-    # Load financial statements data
-    financial_data = load_financial_statements_data(financial_statements_dir)
-    print("Financial statements data loaded successfully")
+# 종목명 기준으로 상위 50개 기업 선정
+ranked_companies = full_data.groupby('종목명').mean().sort_values(by='Final Score', ascending=False)
+top_50_companies = ranked_companies.head(50).copy()  # 명시적으로 복사
 
-    # Merge stock data and financial statements data
-    prepared_data = merge_stock_and_financial_data(stock_data, financial_data)
-    print("Data merged successfully")
+# 상위 50개 기업의 데이터 추출 및 저장
+for file_name in os.listdir(data_merge_final_dir):
+    if file_name.endswith('.csv'):
+        file_path = os.path.join(data_merge_final_dir, file_name)
+        df = load_and_process_file(file_path)
 
-    # 필요한 컬럼만 추출 및 순서 정리
-    columns_needed = ['종목명', '날짜', 'PBR', '시가', '고가', '저가', '종가', '거래량', '상장주식수',
-                      '자산 총액', '부채 총액', '자본 총액', '매출액', '영업이익', '순이익', '현금 흐름',
-                      'ROE', 'EPS', 'BPS', '부채비율', '영업이익률', '순이익률', 'ROA', '매출액 증가율']
-    final_filtered_data = prepared_data[columns_needed]
+        # 종목 코드 또는 이름이 상위 50개 목록에 있는지 확인
+        for company_name in top_50_companies.index:
+            if company_name in df['종목명'].values:
+                output_path = os.path.join(data_output_dir, f'{company_name}.csv')
+                df[df['종목명'] == company_name].to_csv(output_path, index=False, encoding='euc-kr')
+                print(f'Saved data for {company_name} to {output_path}')
 
-    # 병합 후 데이터 확인
-    print(final_filtered_data.head())
+# 상위 50개 종목의 순위와 점수를 포함한 CSV 파일 생성
+top_50_companies['Rank'] = range(1, 51)
+top_50_companies = top_50_companies.reset_index()[['Rank', '종목코드', '종목명', 'Final Score']]
+top_50_companies.rename(columns={'Final Score': 'Score'}, inplace=True)
 
-    # Save individual prepared data files
-    save_individual_prepared_data_files(final_filtered_data, save_dir)
-    print("Data preparation complete.")
+# 순위와 점수가 포함된 파일 저장
+rank_file_path = os.path.join(data_output_dir, 'top_50_companies_ranking.csv')
+top_50_companies.to_csv(rank_file_path, index=False, encoding='euc-kr')
+print(f"Ranking data saved to {rank_file_path}")
+
+print('Processing complete.')
